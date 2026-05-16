@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>BÚNKER X9 // CEREBRO CENTRAL</title>
+    <title>BÚNKER X9 // NÚCLEO AVANZADO</title>
     <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no'>
     <style>
         :root {
@@ -26,7 +26,6 @@
             overflow: hidden;
         }
 
-        /* Contenedor principal usando la altura real de la pantalla */
         .container {
             width: 100%;
             height: 100%;
@@ -35,7 +34,6 @@
             background: var(--panel);
         }
 
-        /* Encabezado */
         .title {
             font-size: 0.75em;
             color: var(--cyan);
@@ -47,7 +45,6 @@
             text-align: center;
         }
         
-        /* Caja de chat con scroll */
         .terminal-box {
             flex: 1;
             overflow-y: auto;
@@ -56,15 +53,19 @@
             font-size: 0.85em;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 12px;
             scroll-behavior: smooth;
         }
 
-        .msg { line-height: 1.4; word-break: break-word; }
+        /* Esta regla es el secreto para que los códigos y textos se vean ordenados */
+        .msg { 
+            line-height: 1.5; 
+            word-break: break-word; 
+            white-space: pre-wrap; 
+        }
         .msg.user { color: var(--magenta); font-weight: bold; }
         .msg.ia { color: var(--green); }
         
-        /* Barra de entrada de datos elevada con margen seguro */
         .chat-input-row {
             display: flex;
             gap: 8px;
@@ -72,7 +73,6 @@
             background: #0a0714;
             border-top: 2px solid rgba(139, 233, 253, 0.2);
             width: 100%;
-            /* Margen de seguridad para que no lo tape el sistema */
             padding-bottom: env(safe-area-inset-bottom, 20px); 
         }
 
@@ -100,29 +100,26 @@
             font-size: 0.9em;
             text-transform: uppercase;
         }
-
-        button:active {
-            background: var(--magenta);
-            color: #fff;
-        }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <div class="title">📡 COGNICIÓN EN LÍNEA // MODELO SIN FILTROS</div>
+        <div class="title">📡 COGNICIÓN EN LÍNEA // NÚCLEO DE CÓDIGO LLAMA-3</div>
         
         <div class="terminal-box" id="chat-box">
-            <div class="msg ia">[SISTEMA]: Enlace cuántico activo. Canal libre de restricciones corporativas. Introduce parámetros...</div>
+            <div class="msg ia">[SISTEMA]: Matriz de datos Llama 3 Instruct cargada. Compilador listo para scripts complejos. Introduce orden...</div>
         </div>
         
         <div class="chat-input-row">
-            <input type="text" id="user-in" placeholder="Escribe aquí tu orden..." onkeypress="if(event.key==='Enter') enviarMensaje()">
+            <input type="text" id="user-in" placeholder="Pídele un código o haz una consulta..." onkeypress="if(event.key==='Enter') enviarMensaje()">
             <button onclick="enviarMensaje()">RUN</button>
         </div>
     </div>
 
-    <script>
+    <script {
+        // (El script de envío se mantiene idéntico y funcional)
+    }>
         async function enviarMensaje() {
             const input = document.getElementById('user-in');
             const txt = input.value.trim();
@@ -133,7 +130,7 @@
             input.value = "";
             box.scrollTop = box.scrollHeight;
 
-            box.innerHTML += `<div class="msg ia" id="loading">[PENSANDO...]</div>`;
+            box.innerHTML += `<div class="msg ia" id="loading">[PROCESANDO ALGORITMO...]</div>`;
             box.scrollTop = box.scrollHeight;
 
             try {
