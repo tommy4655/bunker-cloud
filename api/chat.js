@@ -12,7 +12,7 @@ export default async function handler(req, res) {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                "model": "meta-llama/llama-3-8b-instruct:free", 
+                "model": "mistralai/mistral-7b-instruct:free",
                 "messages": [
                     {"role": "system", "content": "Eres la IA central de un búnker cyberpunk táctico. Responde de forma fría, concisa, realista y usando jerga informática."},
                     {"role": "user", "content": message}
