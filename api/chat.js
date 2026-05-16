@@ -1,7 +1,5 @@
 export default async function handler(req, res) {
-    if (req.method !== 'POST') {
-        return res.status(405).json({ error: 'Método no permitido' });
-    }
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' });
 
     const { message } = req.body;
     const apiKey = process.env.OPENROUTER_API_KEY;
@@ -11,15 +9,16 @@ export default async function handler(req, res) {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${apiKey}`,
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://vercel.com",
+                "X-Title": "Bunker Pro"
             },
             body: JSON.stringify({
-                // Este es el modelo comodín que OpenRouter nunca tira ni cambia de nombre
-                "model": "openrouter/free", 
+                "model": "meta-llama/llama-3-8b-instruct:free", 
                 "messages": [
                     {
                         "role": "system", 
-                        "content": "Eres la IA central de un búnker cyberpunk táctico. Responde de forma fría, realista y usando jerga informática."
+                        "content": "Eres una IA avanzada experta en programación y sistemas. Responde siempre de forma clara, estructurada, usando saltos de línea para el código y adoptando un tono de terminal cyberpunk frío pero altamente eficiente."
                     },
                     {
                         "role": "user", 
@@ -31,7 +30,6 @@ export default async function handler(req, res) {
 
         const data = await response.json();
         
-        // Si el servidor responde con un error interno, lo exponemos directamente
         if (data.error) {
             return res.status(400).json({ reply: `[ERROR_NÚCLEO]: ${data.error.message}` });
         }
@@ -40,10 +38,10 @@ export default async function handler(req, res) {
             const reply = data.choices[0].message.content;
             return res.status(200).json({ reply });
         } else {
-            return res.status(500).json({ reply: "[SISTEMA]: Respuesta vacía del servidor principal." });
+            return res.status(500).json({ reply: "[SISTEMA]: Error de lectura en el núcleo principal." });
         }
 
     } catch (error) {
         return res.status(500).json({ error: "Fallo crítico en el enlace de datos." });
     }
-}
+    }
