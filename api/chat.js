@@ -1,6 +1,7 @@
 export default async function handler(req, res) {
-    // Asegurar que solo acepte peticiones POST de tu web
-    if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' });
+    if (req.method !== 'POST') {
+        return res.status(405).json({ error: 'Método no permitido' });
+    }
 
     const { message } = req.body;
     const apiKey = process.env.OPENROUTER_API_KEY; 
@@ -11,13 +12,12 @@ export default async function handler(req, res) {
             headers: {
                 "Authorization": `Bearer ${apiKey}`,
                 "Content-Type": "application/json",
-                // Estas dos líneas le avisan a OpenRouter que es una conexión legítima de Vercel
                 "HTTP-Referer": "https://vercel.com", 
                 "X-Title": "Bunker Cyberpunk"
             },
             body: JSON.stringify({
-                // Cambiamos al motor gratuito más rápido y estable disponible
-                "model": "meta-llama/llama-3-8b-instruct:free",
+                // Usamos el identificador del modelo gratuito y activo de Meta
+                "model": "meta-llama/llama-3.1-8b-instruct:free", 
                 "messages": [
                     {
                         "role": "system", 
@@ -31,16 +31,20 @@ export default async function handler(req, res) {
             })
         });
 
-        // Capturar la respuesta del servidor
         const data = await response.json();
         
-        // Si OpenRouter devuelve un error interno, lo leemos aquí
+        // Si el servidor de OpenRouter nos devuelve un error, lo exponemos en la terminal
         if (data.error) {
             return res.status(400).json({ reply: `[ERROR_NÚCLEO]: ${data.error.message}` });
         }
 
-        const reply = data.choices[0].message.content;
-        return res.status(200).json({ reply });
+        // Validar que la respuesta contenga el formato esperado
+        if (data.choices && data.choices[0] && data.choices[0].message) {
+            const reply = data.choices[0].message.content;
+            return res.status(200).json({ reply });
+        } else {
+            return res.status(500).json({ reply: "[SISTEMA]: Formato de respuesta inesperado." });
+        }
 
     } catch (error) {
         return res.status(500).json({ error: "Fallo crítico en el enlace de datos." });
