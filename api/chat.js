@@ -17,7 +17,7 @@ export default async function handler(req, res) {
             },
             body: JSON.stringify({
                 // Cambiamos al motor gratuito más rápido y estable disponible
-                "model": "google/gemini-2.5-flash:free", 
+                "model": "meta-llama/llama-3-8b-instruct:free",
                 "messages": [
                     {
                         "role": "system", 
