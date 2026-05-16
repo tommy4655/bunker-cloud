@@ -26,10 +26,10 @@
             overflow: hidden;
         }
 
-        /* Contenedor adaptativo */
+        /* Contenedor principal usando la altura real de la pantalla */
         .container {
             width: 100%;
-            height: 100vh; /* Se estira al alto total visible */
+            height: 100%;
             display: flex;
             flex-direction: column;
             background: var(--panel);
@@ -47,9 +47,9 @@
             text-align: center;
         }
         
-        /* Caja de mensajes flexible */
+        /* Caja de chat con scroll */
         .terminal-box {
-            flex: 1; /* Ocupa todo el espacio disponible menos el título y la barra de escribir */
+            flex: 1;
             overflow-y: auto;
             background: rgba(0, 0, 0, 0.6);
             padding: 15px;
@@ -64,7 +64,7 @@
         .msg.user { color: var(--magenta); font-weight: bold; }
         .msg.ia { color: var(--green); }
         
-        /* Barra inferior de comandos - Asegurada para que nunca se oculte */
+        /* Barra de entrada de datos elevada con margen seguro */
         .chat-input-row {
             display: flex;
             gap: 8px;
@@ -72,6 +72,8 @@
             background: #0a0714;
             border-top: 2px solid rgba(139, 233, 253, 0.2);
             width: 100%;
+            /* Margen de seguridad para que no lo tape el sistema */
+            padding-bottom: env(safe-area-inset-bottom, 20px); 
         }
 
         input {
