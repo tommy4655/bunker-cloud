@@ -5,7 +5,6 @@ export default async function handler(req, res) {
     const apiKey = process.env.OPENROUTER_API_KEY; 
 
     try {
-        // Conexión directa a los servidores ultra-rápidos de Groq
         const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
             headers: {
@@ -13,7 +12,8 @@ export default async function handler(req, res) {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                "model": "llama3-70b-8192", 
+                // Corregido al modelo actual de producción de Groq
+                "model": "llama-3.3-70b-versatile", 
                 "messages": [
                     {
                         "role": "system", 
@@ -43,4 +43,4 @@ export default async function handler(req, res) {
     } catch (error) {
         return res.status(500).json({ error: "Fallo crítico en el enlace de datos con Groq." });
     }
-}
+    }
