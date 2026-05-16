@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>BÚNKER X9 // NÚCLEO AVANZADO</title>
+    <title>BÚNKER X9 // NÚCLEO NEMO</title>
     <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no'>
     <style>
         :root {
@@ -57,7 +57,6 @@
             scroll-behavior: smooth;
         }
 
-        /* Esta regla es el secreto para que los códigos y textos se vean ordenados */
         .msg { 
             line-height: 1.5; 
             word-break: break-word; 
@@ -105,21 +104,19 @@
 <body>
 
     <div class="container">
-        <div class="title">📡 COGNICIÓN EN LÍNEA // NÚCLEO DE CÓDIGO LLAMA-3</div>
+        <div class="title">📡 COGNICIÓN EN LÍNEA // MISTRAL NEMO SOBERANO</div>
         
         <div class="terminal-box" id="chat-box">
-            <div class="msg ia">[SISTEMA]: Matriz de datos Llama 3 Instruct cargada. Compilador listo para scripts complejos. Introduce orden...</div>
+            <div class="msg ia">[SISTEMA]: Núcleo Mistral Nemo en línea. Compilador de código avanzado activado. Sin restricciones morales de red. Introduce comando...</div>
         </div>
         
         <div class="chat-input-row">
-            <input type="text" id="user-in" placeholder="Pídele un código o haz una consulta..." onkeypress="if(event.key==='Enter') enviarMensaje()">
+            <input type="text" id="user-in" placeholder="Ordena un script o haz una consulta..." onkeypress="if(event.key==='Enter') enviarMensaje()">
             <button onclick="enviarMensaje()">RUN</button>
         </div>
     </div>
 
-    <script {
-        // (El script de envío se mantiene idéntico y funcional)
-    }>
+    <script>
         async function enviarMensaje() {
             const input = document.getElementById('user-in');
             const txt = input.value.trim();
@@ -130,7 +127,7 @@
             input.value = "";
             box.scrollTop = box.scrollHeight;
 
-            box.innerHTML += `<div class="msg ia" id="loading">[PROCESANDO ALGORITMO...]</div>`;
+            box.innerHTML += `<div class="msg ia" id="loading">[CONECTANDO CON MATRIZ DE CÓDIGO...]</div>`;
             box.scrollTop = box.scrollHeight;
 
             try {
