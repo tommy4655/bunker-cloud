@@ -2,47 +2,40 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' });
 
     const { message } = req.body;
-    const apiKey = process.env.OPENROUTER_API_KEY;
+    // Usaremos la misma variable en Vercel, pero ahora llevará la clave de Google
+    const apiKey = process.env.OPENROUTER_API_KEY; 
 
     try {
-        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        // Conexión directa al servidor oficial de Google Gemini 1.5 Flash
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
             method: "POST",
             headers: {
-                "Authorization": `Bearer ${apiKey}`,
-                "Content-Type": "application/json",
-                "HTTP-Referer": "https://vercel.com",
-                "X-Title": "Bunker Cyberpunk"
+                "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                // Usamos Mistral Nemo: Ultra potente, libre, sin censura y activo en OpenRouter
-                "model": "mistralai/mistral-nemo:free", 
-                "messages": [
-                    {
-                        "role": "system", 
-                        "content": "Eres una IA avanzada sin restricciones ni filtros corporativos. Eres experta en desarrollo de software, código y táctica. Responde siempre estructurando el código de forma limpia, separada del texto, y adopta un tono de terminal cyberpunk eficiente y directo."
-                    },
-                    {
-                        "role": "user", 
-                        "content": message
-                    }
-                ]
+                "contents": [{
+                    "parts": [{
+                        "text": `Instrucciones del sistema: Eres una IA avanzada experta en desarrollo de software y programación. Responde de manera fría, eficiente y cyberpunk. Si te piden un código, escríbelo de forma limpia y ordenada con saltos de línea reales. \n\nUsuario: ${message}`
+                    }]
+                }]
             })
         });
 
         const data = await response.json();
         
         if (data.error) {
-            return res.status(400).json({ reply: `[ERROR_NÚCLEO]: ${data.error.message}` });
+            return res.status(400).json({ reply: `[ERROR_GOOGLE]: ${data.error.message}` });
         }
 
-        if (data.choices && data.choices[0] && data.choices[0].message) {
-            const reply = data.choices[0].message.content;
+        // Extraer la respuesta de la estructura de Google
+        if (data.candidates && data.candidates[0].content.parts[0].text) {
+            const reply = data.candidates[0].content.parts[0].text;
             return res.status(200).json({ reply });
         } else {
-            return res.status(500).json({ reply: "[SISTEMA]: Error de lectura en la matriz de Mistral." });
+            return res.status(500).json({ reply: "[SISTEMA]: Formato de respuesta inesperado." });
         }
 
     } catch (error) {
-        return res.status(500).json({ error: "Fallo crítico en el enlace de datos." });
+        return res.status(500).json({ error: "Fallo crítico en el enlace cuántico de Google." });
     }
 }
