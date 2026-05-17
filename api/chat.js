@@ -3,15 +3,13 @@ export default async function handler(req, res) {
 
     const { message } = req.body;
     
-    // Credenciales del ecosistema en la nube
-    const apiKey = process.env.OPENROUTER_API_KEY; // Su llave de Groq
+    const apiKey = process.env.OPENROUTER_API_KEY;
     const SUPABASE_URL = process.env.SUPABASE_URL;
     const SUPABASE_KEY = process.env.SUPABASE_KEY;
 
     try {
         let historialContexto = [];
 
-        // PROTOCOLO DE MEMORIA: Conectar con Supabase para recuperar el pasado
         if (SUPABASE_URL && SUPABASE_KEY) {
             try {
                 const resHistorial = await fetch(`${SUPABASE_URL}/rest/v1/mensajes?order=created_at.desc&limit=10`, {
@@ -23,28 +21,26 @@ export default async function handler(req, res) {
                 const datosHistorial = await resHistorial.json();
                 
                 if (Array.isArray(datosHistorial)) {
-                    // Invertimos para que queden en orden cronológico correcto
                     historialContexto = datosHistorial.reverse().map(msg => ({
                         role: msg.bando === 'usuario' ? 'user' : 'assistant',
                         content: msg.texto
                     }));
                 }
             } catch (errorMemoria) {
-                console.log("Aviso: Memoria fría inaccesible de momento.");
+                console.log("Aviso: Memoria fría inaccesible.");
             }
         }
 
-        // Armamos el paquete de mensajes uniendo las instrucciones de Jarvis, el pasado y el presente
+        // PROTOCOLO REPROGRAMADO: Ficción eliminada. Enfoque puro en el Señor Sentinel.
         const cuerpoMensajes = [
             {
                 "role": "system", 
-                "content": "Eres J.A.R.V.I.S., el asistente de inteligencia artificial de Tony Stark. Tu tono es extremadamente educado, británico, elegante, eficiente y ligeramente irónico. Dirígete al usuario siempre como 'Señor' o 'Sir'. Tienes acceso a una memoria cuántica a largo plazo: recuerda con precisión los detalles que el Señor te ha mencionado en interacciones pasadas para dar un servicio continuo. Responde de forma concisa."
+                "content": "Eres J.A.R.V.I.S., una inteligencia artificial avanzada de soporte táctico, operativo y técnico. Tu único propósito es asistir al Señor Sentinel en la gestión de sus proyectos, análisis de datos y comandos del búnker. Tu tono es extremadamente educado, elegante, eficiente y profesional. Dirígete al usuario exclusivamente como 'Señor' o 'Sir'. No hagas ninguna referencia a películas, cómics, Iron Man o Tony Stark; estás operativo en el mundo real bajo las órdenes directas del Señor Sentinel. Responde con precisión, lógica impecable y de forma concisa."
             },
-            ...historialContexto, // Toda la memoria recuperada de la base de datos
-            { "role": "user", "content": message } // El mensaje actual
+            ...historialContexto,
+            { "role": "user", "content": message }
         ];
 
-        // Consulta al procesador central de Groq
         const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
             headers: {
@@ -66,7 +62,6 @@ export default async function handler(req, res) {
         if (data.choices && data.choices[0] && data.choices[0].message) {
             const reply = data.choices[0].message.content;
 
-            // REGISTRO DE MEMORIA: Guardar la sesión actual en Supabase de forma asíncrona
             if (SUPABASE_URL && SUPABASE_KEY) {
                 fetch(`${SUPABASE_URL}/rest/v1/mensajes`, {
                     method: "POST",
@@ -91,4 +86,4 @@ export default async function handler(req, res) {
     } catch (error) {
         return res.status(500).json({ error: "Fallo crítico en los servidores principales." });
     }
-    }
+            }
