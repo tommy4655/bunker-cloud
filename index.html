@@ -3,123 +3,219 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PROYECTO J.A.R.V.I.S.</title>
+    <title>SISTEMA CENTRAL J.A.R.V.I.S.</title>
     <style>
+        :root {
+            --neon-blue: #00e5ff;
+            --neon-green: #00ff66;
+            --dark-bg: #03080e;
+            --panel-bg: rgba(6, 18, 30, 0.75);
+            --border-glow: rgba(0, 229, 255, 0.2);
+        }
+
         body {
-            background-color: #050505;
-            color: #00ff66;
-            font-family: 'Courier New', Courier, monospace;
+            background-color: var(--dark-bg);
+            background-image: 
+                radial-gradient(at 50% 0%, rgba(0, 229, 255, 0.15) 0px, transparent 50%),
+                linear-gradient(rgba(18, 24, 38, 0.4) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(18, 24, 38, 0.4) 1px, transparent 1px);
+            background-size: 100% 100%, 30px 30px, 30px 30px;
+            color: #e0f7fc;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             margin: 0;
-            padding: 20px;
+            padding: 15px;
             display: flex;
             flex-direction: column;
             height: 100vh;
             box-sizing: border-box;
+            overflow: hidden;
         }
+
         #header {
             text-align: center;
-            border-bottom: 1px solid #003311;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
-            font-size: 14px;
-            letter-spacing: 2px;
+            padding: 10px;
+            background: var(--panel-bg);
+            border: 1px solid rgba(0, 229, 255, 0.3);
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: bold;
+            letter-spacing: 3px;
+            color: var(--neon-blue);
+            text-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
+            box-shadow: inset 0 0 15px rgba(0, 229, 255, 0.1);
+            margin-bottom: 15px;
         }
-        #terminal {
+
+        #pantalla-chat {
             flex: 1;
             overflow-y: auto;
-            border: 1px solid #003311;
-            padding: 15px;
-            background-color: #000000;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            font-size: 16px;
-            line-height: 1.5;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 15px;
+            padding-bottom: 20px;
         }
-        .linea {
-            margin-bottom: 12px;
-            white-space: pre-wrap;
+
+        /* Ocultar barra de scroll pero mantener funcionalidad */
+        #pantalla-chat::-webkit-scrollbar {
+            width: 4px;
         }
-        #controles {
+        #pantalla-chat::-webkit-scrollbar-thumb {
+            background: var(--neon-blue);
+            border-radius: 2px;
+        }
+
+        .burbuja {
+            max-width: 85%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 15px;
+            line-height: 1.4;
+            position: relative;
+            animation: aparecer 0.3s ease-out forwards;
+        }
+
+        .jarvis-msg {
+            align-self: flex-start;
+            background: var(--panel-bg);
+            border: 1px solid rgba(0, 229, 255, 0.4);
+            border-left: 4px solid var(--neon-blue);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3), 0 0 10px var(--border-glow);
+            color: #d1f4ff;
+        }
+
+        .jarvis-msg::before {
+            content: "J.A.R.V.I.S.";
+            display: block;
+            font-size: 10px;
+            font-weight: bold;
+            color: var(--neon-blue);
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+
+        .usuario-msg {
+            align-self: flex-end;
+            background: rgba(0, 255, 102, 0.08);
+            border: 1px solid rgba(0, 255, 102, 0.4);
+            border-right: 4px solid var(--neon-green);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            color: #e6fff0;
+        }
+
+        .usuario-msg::before {
+            content: "SENTINEL";
+            display: block;
+            font-size: 10px;
+            font-weight: bold;
+            color: var(--neon-green);
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+            text-align: right;
+        }
+
+        #panel-control {
             display: flex;
             gap: 10px;
-            padding-bottom: 10px;
+            background: rgba(4, 12, 22, 0.9);
+            padding: 10px;
+            border-radius: 12px;
+            border: 1px solid rgba(0, 229, 255, 0.2);
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
         }
+
         #btn-micro {
-            background-color: #1a1a2e;
-            border: 1px solid #00ff66;
-            color: #00ff66;
-            padding: 15px;
-            border-radius: 5px;
+            background: rgba(0, 229, 255, 0.1);
+            border: 1px solid var(--neon-blue);
+            color: var(--neon-blue);
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
             font-size: 20px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 55px;
+            transition: all 0.3s;
         }
+
         #btn-micro.grabando {
-            background-color: #ff0055;
-            color: #ffffff;
+            background: rgba(255, 0, 85, 0.2);
             border-color: #ff0055;
-            animation: pulso 1.5s infinite;
+            color: #ff0055;
+            animation: pulso-holograma 1.2s infinite;
         }
+
         #entrada {
             flex: 1;
-            background-color: #000000;
-            border: 1px solid #003311;
-            color: #00ff66;
-            padding: 15px;
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 16px;
-            border-radius: 5px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(0, 229, 255, 0.3);
+            color: #ffffff;
+            padding: 0 15px;
+            height: 50px;
+            font-size: 15px;
+            border-radius: 10px;
             outline: none;
+            transition: all 0.3s;
         }
+
         #entrada:focus {
-            border-color: #00ff66;
+            border-color: var(--neon-blue);
+            box-shadow: 0 0 10px rgba(0, 229, 255, 0.2);
         }
-        #btn-enviar {
-            background-color: #00ff66;
-            color: #000000;
+
+        #btn-ejecutar {
+            background: var(--neon-blue);
+            color: #03080e;
             border: none;
-            padding: 0 25px;
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 16px;
+            padding: 0 20px;
+            height: 50px;
+            font-size: 14px;
             font-weight: bold;
-            border-radius: 5px;
+            letter-spacing: 1px;
+            border-radius: 10px;
             cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.4);
         }
-        #btn-enviar:active {
-            background-color: #00cc52;
+
+        #btn-ejecutar:active {
+            transform: scale(0.97);
         }
-        @keyframes pulso {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
+
+        @keyframes aparecer {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulso-holograma {
+            0% { box-shadow: 0 0 0 0 rgba(255, 0, 85, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 0, 85, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 0, 85, 0); }
         }
     </style>
 </head>
 <body>
 
-    <div id="header">🤖 PROYECTO J.A.R.V.I.S. // CONTROL CENTRAL</div>
+    <div id="header">⚡ ARCHIVADO DE PROTOCOLO // INTEGRIDAD: 100%</div>
     
-    <div id="terminal">
-        <div class="linea">[JARVIS]: Todos los sistemas principales se encuentran operativos, Señor. ¿En qué puedo colaborar con sus proyectos hoy?</div>
+    <div id="pantalla-chat">
+        <div class="burbuja jarvis-msg">Sistemas principales vinculados a la red cuántica de manera exitosa, Señor Sentinel. Monitoreando base de datos activa.</div>
     </div>
 
-    <div id="controles">
-        <button id="btn-micro" onclick="alternarMicrofono()">🎤</button>
-        <input type="text" id="entrada" placeholder="Escriba una orden o use el micrófono..." onkeypress="detectarEnter(event)">
-        <button id="btn-enviar" onclick="procesarOrden()">RUN</button>
+    <div id="panel-control">
+        <button id="btn-micro" onclick="alternarMicrofono()">🎙️</button>
+        <input type="text" id="entrada" placeholder="Transmitir comando de voz o texto..." onkeypress="detectarEnter(event)">
+        <button id="btn-ejecutar" onclick="procesarOrden()">ENVIAR</button>
     </div>
 
     <script>
-        const terminal = document.getElementById('terminal');
+        const pantallaChat = document.getElementById('pantalla-chat');
         const entrada = document.getElementById('entrada');
         const btnMicro = document.getElementById('btn-micro');
         let reconocimiento;
         let grabando = false;
 
-        // Configuración del Reconocimiento de Voz nativo para Android
         if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             reconocimiento = new SpeechRecognition();
@@ -130,28 +226,27 @@
             reconocimiento.onstart = () => {
                 grabando = true;
                 btnMicro.classList.add('grabando');
-                entrada.placeholder = "Escuchando, Señor...";
+                entrada.placeholder = "Escuchando frecuencia, Señor...";
             };
 
             reconocimiento.onend = () => {
                 grabando = false;
                 btnMicro.classList.remove('grabando');
-                entrada.placeholder = "Escriba una orden o use el micrófono...";
+                entrada.placeholder = "Transmitir comando de voz o texto...";
             };
 
             reconocimiento.onresult = (event) => {
                 const textoDetectado = event.results[0][0].transcript;
                 entrada.value = textoDetectado;
-                procesarOrden(); // Envía automáticamente al terminar de hablar
+                procesarOrden();
             };
 
-            reconocimiento.onerror = (event) => {
-                console.error("Error del micro:", event.error);
+            reconocimiento.onerror = () => {
                 grabando = false;
                 btnMicro.classList.remove('grabando');
             };
         } else {
-            btnMicro.style.display = 'none'; // Oculta si el navegador no lo soporta
+            btnMicro.style.display = 'none';
         }
 
         function alternarMicrofono() {
@@ -169,15 +264,11 @@
             }
         }
 
-        // Sistema de Voz Text-to-Speech integrado (Fase Celular)
         function hablar(texto) {
             if ('speechSynthesis' in window) {
-                // Limpiamos etiquetas de sistema si las hay
-                const textoLimpio = texto.replace(/\[JARVIS\]:/g, '').trim();
-                const mensajeVoz = new SpeechSynthesisUtterance(textoLimpio);
+                const mensajeVoz = new SpeechSynthesisUtterance(texto);
                 mensajeVoz.lang = 'es-ES';
                 
-                // Intenta forzar una voz masculina si está disponible en Android
                 const voces = window.speechSynthesis.getVoices();
                 const vozMasculina = voces.find(v => v.lang.includes('es') && (v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('google')));
                 if (vozMasculina) mensajeVoz.voice = vozMasculina;
@@ -186,51 +277,66 @@
             }
         }
 
+        // Efecto visual de escritura holográfica en tiempo real
+        function efectoEscritura(elemento, texto) {
+            let i = 0;
+            elemento.innerHTML = ""; 
+            function escribir() {
+                if (i < texto.length) {
+                    elemento.innerHTML += texto.charAt(i);
+                    i++;
+                    pantallaChat.scrollTop = pantallaChat.scrollHeight;
+                    setTimeout(escribir, 15); // Velocidad de escritura en ms
+                }
+            }
+            escribir();
+        }
+
         async function procesarOrden() {
             const texto = entrada.value.trim();
             if (!texto) return;
 
-            // Imprimir lo que dijo el usuario en pantalla
-            imprimirPantalla("[USUARIO]: " + texto);
+            imprimirPantalla(texto, 'usuario-msg');
             entrada.value = '';
 
             try {
-                // PUENTE DE DATOS: Formateado exactamente para recibir la memoria en Vercel
                 const respuesta = await fetch('/api/chat', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ message: texto })
                 });
 
                 const datos = await respuesta.json();
 
                 if (datos.reply) {
-                    imprimirPantalla("[JARVIS]: " + datos.reply);
+                    imprimirPantalla(datos.reply, 'jarvis-msg', true);
                     hablar(datos.reply);
                 } else {
-                    imprimirPantalla("[SISTEMA]: Error en la respuesta del procesador central.");
+                    imprimirPantalla("Advertencia: Se detectó una respuesta corrupta en el núcleo.", 'jarvis-msg');
                 }
 
             } catch (error) {
-                console.error(error);
-                imprimirPantalla("[SISTEMA]: Interrupción de enlace. Verifique los servidores en Vercel.");
+                imprimirPantalla("Error de enlace crítico. Red de comunicación fuera de línea.", 'jarvis-msg');
             }
         }
 
-        function imprimirPantalla(mensaje) {
-            const nuevaLinea = document.createElement('div');
-            nuevaLinea.className = 'linea';
-            nuevaLinea.textContent = mensaje;
-            terminal.appendChild(nuevaLinea);
-            terminal.scrollTop = terminal.scrollHeight; // Auto-scroll al fondo
+        function imprimirPantalla(mensaje, clase, conEfecto = false) {
+            const nuevaBurbuja = document.createElement('div');
+            nuevaBurbuja.className = `burbuja ${clase}`;
+            pantallaChat.appendChild(nuevaBurbuja);
+            
+            if (conEfecto) {
+                efectoEscritura(nuevaBurbuja, mensaje);
+            } else {
+                nuevaBurbuja.textContent = mensaje;
+            }
+            
+            pantallaChat.scrollTop = pantallaChat.scrollHeight;
         }
 
-        // Asegura que las voces carguen correctamente en navegadores basados en Chromium/Android
         if ('speechSynthesis' in window) {
             window.speechSynthesis.onvoiceschanged = () => {};
         }
     </script>
 </body>
-</html>
+    </html>
