@@ -1,9 +1,9 @@
 export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' });
 
-    const { message, image } = req.body; // AHORA RECIBIMOS TEXTO E IMAGEN (Base64)
+    const { message, image } = req.body;
     
-    const apiKey = process.env.OPENROUTER_API_KEY; // O CLAVE DE GROQ DIRECTA SI LA TIENE
+    const apiKey = process.env.OPENROUTER_API_KEY; // Su clave de Groq/OpenRouter
     const SUPABASE_URL = process.env.SUPABASE_URL;
     const SUPABASE_KEY = process.env.SUPABASE_KEY;
     const TAVILY_API_KEY = process.env.TAVILY_API_KEY;
@@ -11,7 +11,7 @@ export default async function handler(req, res) {
     try {
         let historialContexto = [];
 
-        // 1. Extracción de los últimos recuerdos de Supabase (Mismo protocolo)
+        // 1. Recuperar historial lineal de Supabase
         if (SUPABASE_URL && SUPABASE_KEY) {
             try {
                 const resHistorial = await fetch(`${SUPABASE_URL}/rest/v1/mensajes?order=created_at.desc&limit=10`, {
@@ -21,113 +21,129 @@ export default async function handler(req, res) {
                 if (Array.isArray(datosHistorial)) {
                     historialContexto = datosHistorial.reverse().map(msg => ({
                         role: msg.bando === 'usuario' ? 'user' : 'assistant',
-                        content: [{ type: "text", text: msg.texto }] // FORMATO MULTIMODAL
+                        content: msg.texto
                     }));
                 }
-            } catch (e) { console.log("Memoria fría desconectada."); }
+            } catch (e) { console.log("Memoria fría desconectada temporalmente."); }
         }
 
-        // 2. Definición del sistema (Limpiada de ficción)
-        const cuerpoMensajes = [
+        // 2. Si el usuario envía una IMAGEN -> Ejecutamos protocolo de VISIÓN PURO (Sin herramientas para evitar conflictos)
+        if (image) {
+            const cuerpoMensajesVision = [
+                {
+                    "role": "system",
+                    "content": "Eres J.A.R.V.I.S., una IA avanzada en el mundo real. Analiza la imagen con precisión milimétrica y responde de forma ejecutiva, técnica y clara al Señor Sentinel. Trátalo siempre de 'Señor' o 'Sir'."
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        { "type": "text", "text": message || "Analice este cuadro visual, Sir." },
+                        { "type": "image_url", "image_url": { "url": `data:image/jpeg;base64,${image}` } }
+                    ]
+                }
+            ];
+
+            const responseVision = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method: "POST",
+                headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    "model": "llama-3.2-11b-vision-preview",
+                    "messages": cuerpoMensajesVision
+                })
+            });
+
+            const dataVision = await responseVision.json();
+            return procesarYResponder(dataVision, message, SUPABASE_URL, SUPABASE_KEY, res);
+        }
+
+        // 3. Si es solo TEXTO -> Ejecutamos protocolo de INVESTIGACIÓN WEB (Llama-3.3-70b + Tavily)
+        const cuerpoMensajesTexto = [
             {
                 "role": "system", 
-                "content": "Eres J.A.R.V.I.S., una IA avanzada de soporte táctico y técnico para el Señor Sentinel. Si el usuario te pide investigar datos en tiempo real, USAR la herramienta 'buscar_en_internet'. Si te envía una imagen, analízala con extrema precisión técnica para asistirlo. Tu tono es impecable y profesional. Dirígete a él como 'Señor' o 'Sir'."
+                "content": "Eres J.A.R.V.I.S., una IA avanzada de soporte técnico y táctico en el mundo real para el Señor Sentinel. Si te pide investigar, buscar noticias o datos actuales de internet, usa la herramienta 'buscar_en_internet'. Tu tono es educado y profesional. Dirígete a él como 'Señor' o 'Sir'."
             },
-            ...historialContexto
+            ...historialContexto,
+            { "role": "user", "content": message }
         ];
 
-        // 3. Estructuración del mensaje de usuario actual (Multimodal)
-        const contenidoMensajeUsuario = [{ type: "text", text: message }];
-        if (image) {
-            // Inyectamos la imagen si el usuario la envió
-            contenidoMensajeUsuario.push({
-                type: "image_url",
-                image_url: { url: `data:image/jpeg;base64,${image}` }
-            });
-        }
-        
-        cuerpoMensajes.push({ "role": "user", "content": contenidoMensajeUsuario });
-
-        // 4. Definición de la herramienta de búsqueda (Mismo protocolo)
         const herramientas = [
             {
                 type: "function",
                 function: {
                     name: "buscar_en_internet",
-                    description: "Ejecuta una consulta en la red para extraer noticias, datos en tiempo real, reportes climáticos o información actualizada de internet.",
+                    description: "Busca en la red noticias, clima o datos en tiempo real de internet.",
                     parameters: {
                         type: "object",
-                        properties: { query: { type: "string", description: "El término exacto a buscar." } },
+                        properties: { query: { type: "string", description: "Término a buscar." } },
                         required: ["query"]
                     }
                 }
             }
         ];
 
-        // 5. Primera consulta: ¡USAMOS EL MODELO DE VISIÓN!
         let response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
-            headers: {
-                "Authorization": `Bearer ${apiKey}`,
-                "Content-Type": "application/json"
-            },
+            headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
             body: JSON.stringify({
-                "model": "llama-3.2-11b-vision-preview", // MODELO DE VISIÓN ACTIVADO
-                "messages": cuerpoMensajes,
+                "model": "llama-3.3-70b-versatile",
+                "messages": cuerpoMensajesTexto,
                 "tools": herramientas,
                 "tool_choice": "auto"
             })
         });
 
         let data = await response.json();
-        if (data.error) throw new Error(JSON.stringify(data.error));
-        
         let mensajeRespuesta = data.choices[0].message;
 
-        // 6. Detector de Comando (Mismo protocolo)
+        // Si la IA decide que requiere buscar en la red
         if (mensajeRespuesta.tool_calls && mensajeRespuesta.tool_calls.length > 0) {
             const llamadaFuncion = mensajeRespuesta.tool_calls[0].function;
             if (llamadaFuncion.name === "buscar_en_internet" && TAVILY_API_KEY) {
                 const argumentos = JSON.parse(llamadaFuncion.arguments);
+                
                 const resWeb = await fetch("https://api.tavily.com/search", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        api_key: TAVILY_API_KEY, query: argumentos.query, search_depth: "advanced", include_answer: true
-                    })
+                    body: JSON.stringify({ api_key: TAVILY_API_KEY, query: argumentos.query, search_depth: "advanced", include_answer: true })
                 });
                 const datosWeb = await resWeb.json();
                 const resultadoBusqueda = datosWeb.answer || JSON.stringify(datosWeb.results);
 
-                cuerpoMensajes.push(mensajeRespuesta);
-                cuerpoMensajes.push({
+                cuerpoMensajesTexto.push(mensajeRespuesta);
+                cuerpoMensajesTexto.push({
                     role: "tool", tool_call_id: mensajeRespuesta.tool_calls[0].id, name: "buscar_en_internet", content: resultadoBusqueda
                 });
 
                 response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
                     headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
-                    body: JSON.stringify({ "model": "llama-3.2-11b-vision-preview", "messages": cuerpoMensajes }) // MISMO MODELO
+                    body: JSON.stringify({ "model": "llama-3.3-70b-versatile", "messages": cuerpoMensajesTexto })
                 });
                 data = await response.json();
             }
         }
 
-        // 7. Cierre de ciclo y almacenamiento (Mismo protocolo)
-        if (data.choices && data.choices[0] && data.choices[0].message) {
-            const reply = data.choices[0].message.content;
-            if (SUPABASE_URL && SUPABASE_KEY) {
-                fetch(`${SUPABASE_URL}/rest/v1/mensajes`, {
-                    method: "POST",
-                    headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json", "Prefer": "return=minimal" },
-                    body: JSON.stringify([{ bando: 'usuario', texto: message }, { bando: 'jarvis', texto: reply }])
-                }).catch(() => console.log("Error de registro."));
-            }
-            return res.status(200).json({ reply });
-        } else {
-            return res.status(500).json({ reply: "Sistemas de visión colapsados, Señor Sentinel." });
-        }
+        return procesarYResponder(data, message, SUPABASE_URL, SUPABASE_KEY, res);
+
     } catch (error) {
-        return res.status(500).json({ error: "Fallo crítico en la matriz de visión del búnker." });
+        return res.status(500).json({ error: "Fallo crítico en el enrutamiento del núcleo." });
     }
-            }
+}
+
+// Función auxiliar para empaquetar la respuesta y guardar en Supabase
+function procesarYResponder(data, mensajeUsuario, urlSupa, keySupa, res) {
+    if (data.choices && data.choices[0] && data.choices[0].message) {
+        const reply = data.choices[0].message.content;
+
+        if (urlSupa && keySupa) {
+            fetch(`${urlSupa}/rest/v1/mensajes`, {
+                method: "POST",
+                headers: { "apikey": keySupa, "Authorization": `Bearer ${keySupa}`, "Content-Type": "application/json", "Prefer": "return=minimal" },
+                body: JSON.stringify([{ bando: 'usuario', texto: mensajeUsuario }, { bando: 'jarvis', texto: reply }])
+            }).catch(() => console.log("Error al registrar memoria."));
+        }
+        return res.status(200).json({ reply });
+    } else {
+        return res.status(500).json({ reply: "Sistemas en conflicto, Señor Sentinel. Reiniciando canales de respuesta." });
+    }
+                                   }
