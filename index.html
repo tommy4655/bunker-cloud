@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SISTEMA CENTRAL J.A.R.V.I.S.</title>
+    <title>SISTEMA CENTRAL N.E.O.N.</title>
     <style>
         :root {
             --neon-blue: #00e5ff;
+            --neon-purple: #bd00ff;
             --neon-green: #00ff66;
             --dark-bg: #03080e;
             --panel-bg: rgba(6, 18, 30, 0.75);
@@ -80,23 +81,23 @@
             animation: aparecer 0.3s ease-out forwards;
         }
 
-        .jarvis-msg {
+        .neon-msg {
             align-self: flex-start;
             background: var(--panel-bg);
-            border: 1px solid rgba(0, 229, 255, 0.4);
-            border-left: 4px solid var(--neon-blue);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3), 0 0 10px var(--border-glow);
-            color: #d1f4ff;
-            transition: border 0.5s;
+            border: 1px solid rgba(189, 0, 255, 0.4);
+            border-left: 4px solid var(--neon-purple);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3), 0 0 10px rgba(189, 0, 255, 0.1);
+            color: #f5e6ff;
         }
 
-        .jarvis-msg::before {
-            content: "J.A.R.V.I.S.";
+        .neon-msg::before {
+            content: "N.E.O.N.";
             display: block;
             font-size: 10px;
             font-weight: bold;
-            color: var(--neon-blue);
+            color: var(--neon-purple);
             margin-bottom: 4px;
+            letter-spacing: 1px;
         }
 
         .usuario-msg {
@@ -201,17 +202,17 @@
 <body>
 
     <div id="header">
-        <span>⚡ ARCHIVADO DE PROTOCOLO // INTEGRIDAD: 100%</span>
-        <span id="telemetria-nucleo">[ NÚCLEO: EN ESPERA ]</span>
+        <span>⚡ INTEGRIDAD NÚCLEO N.E.O.N. // PROTOCOLOS ACTUALIZADOS: 100%</span>
+        <span id="telemetria-nucleo">[ NÚCLEO: OPERATIVO ]</span>
     </div>
     
     <div id="pantalla-chat">
-        <div class="burbuja jarvis-msg">Sistemas principales vinculados a la red de manera exitosa, Señor Sentinel. Monitoreando base de datos activa.</div>
+        <div class="burbuja neon-msg">Reprogramación completada, Señor Sentinel. Núcleo N.E.O.N. activo y en línea. Monitoreando base de datos táctica.</div>
     </div>
 
     <div id="panel-control">
         <button id="btn-micro" class="btn-accion" onclick="alternarMicrofono()">🎙️</button>
-        <textarea id="entrada" rows="1" placeholder="Transmitir comando..." onkeydown="detectarTeclas(event)" oninput="autoExpandir(this)"></textarea>
+        <textarea id="entrada" rows="1" placeholder="Transmitir comando a N.E.O.N..." onkeydown="detectarTeclas(event)" oninput="autoExpandir(this)"></textarea>
         <button id="btn-ejecutar" onclick="procesarOrden()">ENVIAR</button>
     </div>
 
@@ -261,7 +262,7 @@
                 telemetria.textContent = "[ NÚCLEO: MODO ALERTA ]";
             } else if (disparadoresNormal.some(palabra => comando.includes(palabra))) {
                 document.body.classList.remove('modo-alerta');
-                telemetria.textContent = "[ NÚCLEO: EN ESPERA ]";
+                telemetria.textContent = "[ NÚCLEO: OPERATIVO ]";
             }
         }
 
@@ -296,16 +297,16 @@
 
                 if (datos.reply) {
                     evaluarModosSistema(datos.reply);
-                    imprimirPantalla(datos.reply, 'jarvis-msg');
+                    imprimirPantalla(datos.reply, 'neon-msg');
                     hablar(datos.reply);
                 } else {
-                    imprimirPantalla("Error de respuesta en la matriz central.", 'jarvis-msg');
+                    imprimirPantalla("Error de respuesta en la matriz central.", 'neon-msg');
                 }
             } catch (error) {
-                imprimirPantalla("Error de enlace. Servidor fuera de línea.", 'jarvis-msg');
+                imprimirPantalla("Error de enlace. Servidor fuera de línea.", 'neon-msg');
             } finally {
                 const esAlertaFinal = document.body.classList.contains('modo-alerta');
-                telemetria.textContent = esAlertaFinal ? "[ NÚCLEO: MODO ALERTA ]" : "[ NÚCLEO: EN ESPERA ]";
+                telemetria.textContent = esAlertaFinal ? "[ NÚCLEO: MODO ALERTA ]" : "[ NÚCLEO: OPERATIVO ]";
             }
         }
 
@@ -318,4 +319,4 @@
         }
     </script>
 </body>
-</html>
+        </html>
