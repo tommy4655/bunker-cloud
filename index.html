@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>BÚNKER X9 // NÚCLEO NEMO</title>
+    <title>BÚNKER X9 // ASISTENTE J.A.R.V.I.S.</title>
     <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no'>
     <style>
         :root {
@@ -67,7 +67,7 @@
         
         .chat-input-row {
             display: flex;
-            gap: 8px;
+            gap: 6px;
             padding: 12px;
             background: #0a0714;
             border-top: 2px solid rgba(139, 233, 253, 0.2);
@@ -91,7 +91,7 @@
             background: var(--cyan);
             border: none;
             color: #000;
-            padding: 0 20px;
+            padding: 0 14px;
             border-radius: 4px;
             font-family: inherit;
             font-weight: bold;
@@ -99,35 +99,114 @@
             font-size: 0.9em;
             text-transform: uppercase;
         }
+
+        /* Botón especial para el micrófono */
+        .btn-mic {
+            background: #282a36;
+            border: 1px solid var(--magenta);
+            color: var(--magenta);
+            font-size: 1.2em;
+        }
+        .btn-mic.recording {
+            background: var(--magenta);
+            color: #000;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <div class="title">📡 COGNICIÓN EN LÍNEA // MISTRAL NEMO SOBERANO</div>
+        <div class="title">🤖 PROYECTO J.A.R.V.I.S. // NÚCLEO ACTIVO</div>
         
         <div class="terminal-box" id="chat-box">
-            <div class="msg ia">[SISTEMA]: Núcleo Mistral Nemo en línea. Compilador de código avanzado activado. Sin restricciones morales de red. Introduce comando...</div>
+            <div class="msg ia">[JARVIS]: Sistemas de audio y reconocimiento en línea, señor. Listo para recibir comandos de voz o texto.</div>
         </div>
         
         <div class="chat-input-row">
-            <input type="text" id="user-in" placeholder="Ordena un script o haz una consulta..." onkeypress="if(event.key==='Enter') enviarMensaje()">
+            <button class="btn-mic" id="mic-btn" onclick="activarMicrofono()">🎤</button>
+            <input type="text" id="user-in" placeholder="Hable o escriba una orden..." onkeypress="if(event.key==='Enter') enviarMensaje()">
             <button onclick="enviarMensaje()">RUN</button>
         </div>
     </div>
 
     <script>
+        // Configuración del Reconocimiento de Voz nativo
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition = null;
+        
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.lang = 'es-ES';
+            recognition.interimResults = false;
+
+            recognition.onresult = (event) => {
+                const textoEscuchado = event.results[0][0].transcript;
+                document.getElementById('user-in').value = textoEscuchado;
+                detenerMicrofono();
+                // Opcional: Envía el mensaje automáticamente tras hablar
+                enviarMensaje();
+            };
+
+            recognition.onerror = () => { detenerMicrofono(); };
+            recognition.onend = () => { detenerMicrofono(); };
+        } else {
+            document.getElementById('mic-btn').style.display = 'none';
+            console.log("Tu navegador no soporta reconocimiento de voz.");
+        }
+
+        function activarMicrofono() {
+            if (!recognition) return;
+            const btn = document.getElementById('mic-btn');
+            if (btn.classList.contains('recording')) {
+                recognition.stop();
+            } else {
+                btn.classList.add('recording');
+                btn.innerText = "🛑";
+                recognition.start();
+            }
+        }
+
+        function detenerMicrofono() {
+            const btn = document.getElementById('mic-btn');
+            btn.classList.remove('recording');
+            btn.innerText = "🎤";
+        }
+
+        // Función para que la IA hable por los altavoces
+        function hablar(texto) {
+            if ('speechSynthesis' in window) {
+                // Limpiar etiquetas raras como [IA]: o códigos si los hay antes de hablar
+                let textoLimpio = texto.replace(/\[.*?\]/g, '').trim();
+                
+                const utterance = new SpeechSynthesisUtterance(textoLimpio);
+                utterance.lang = 'es-ES';
+                utterance.rate = 1.1; // Velocidad un poquito rápida para que suene pro
+                utterance.pitch = 0.9; // Tono ligeramente más grave/robótico
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
         async function enviarMensaje() {
             const input = document.getElementById('user-in');
             const txt = input.value.trim();
             if(!txt) return;
+
+            // Frenar cualquier voz que esté hablando en ese momento
+            if ('speechSynthesis' in window) window.speechSynthesis.cancel();
 
             const box = document.getElementById('chat-box');
             box.innerHTML += `<div class="msg user">> ${txt}</div>`;
             input.value = "";
             box.scrollTop = box.scrollHeight;
 
-            box.innerHTML += `<div class="msg ia" id="loading">[CONECTANDO CON MATRIZ DE CÓDIGO...]</div>`;
+            box.innerHTML += `<div class="msg ia" id="loading">[Sincronizando respuesta...]</div>`;
             box.scrollTop = box.scrollHeight;
 
             try {
@@ -141,7 +220,12 @@
                 const loadingEl = document.getElementById('loading');
                 if (loadingEl) loadingEl.remove();
                 
-                box.innerHTML += `<div class="msg ia">[IA]: ${data.reply || 'Error en vector de respuesta.'}</div>`;
+                let respuestaFinal = data.reply || 'Error en vector de respuesta.';
+                box.innerHTML += `<div class="msg ia">[JARVIS]: ${respuestaFinal}</div>`;
+                
+                // Activar la voz de Jarvis
+                hablar(respuestaFinal);
+
             } catch (e) {
                 const loadingEl = document.getElementById('loading');
                 if (loadingEl) loadingEl.remove();
