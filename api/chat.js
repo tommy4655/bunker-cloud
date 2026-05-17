@@ -39,7 +39,7 @@ export default async function handler(req, res) {
             }
         }
 
-        // 2. CONSTRUCCIÓN DE LA SINTAXIS NATIVA DE MENSAJES (Identidad N.E.O.N. Inyectada)
+        // 2. CONSTRUCCIÓN DE LA SINTAXIS NATIVA DE MENSAJES (Identidad N.E.O.N. Pura)
         const cuerpoMensajes = [
             {
                 "role": "system", 
@@ -134,7 +134,7 @@ export default async function handler(req, res) {
             }
         }
 
-        // 6. PERSISTENCIA AUTOMÁTICA EN SUPABASE Y RESPUESTA FINAL
+        // 6. PERSISTENCIA EN BASE DE DATOS
         if (data.choices && data.choices[0] && data.choices[0].message) {
             const reply = data.choices[0].message.content;
 
@@ -149,7 +149,7 @@ export default async function handler(req, res) {
                     },
                     body: JSON.stringify([
                         { bando: 'usuario', texto: message },
-                        { bando: 'jarvis', texto: reply }
+                        { bando: 'neon', texto: reply }
                     ])
                 }).catch(() => console.log("Omitiendo registro."));
             }
@@ -162,4 +162,4 @@ export default async function handler(req, res) {
     } catch (error) {
         return res.status(200).json({ reply: "Enlace reestablecido. Núcleo N.E.O.N. listo para operar." });
     }
-                            }
+            }
