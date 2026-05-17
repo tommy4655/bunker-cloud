@@ -100,7 +100,6 @@
             text-transform: uppercase;
         }
 
-        /* Botón especial para el micrófono */
         .btn-mic {
             background: #282a36;
             border: 1px solid var(--magenta);
@@ -123,21 +122,20 @@
 <body>
 
     <div class="container">
-        <div class="title">🤖 PROYECTO J.A.R.V.I.S. // NÚCLEO ACTIVO</div>
+        <div class="title">🤖 PROYECTO J.A.R.V.I.S. // CONTROL CENTRAL</div>
         
         <div class="terminal-box" id="chat-box">
-            <div class="msg ia">[JARVIS]: Sistemas de audio y reconocimiento en línea, señor. Listo para recibir comandos de voz o texto.</div>
+            <div class="msg ia">[JARVIS]: Todos los sistemas principales se encuentran operativos, Señor. ¿En qué puedo colaborar con sus proyectos hoy?</div>
         </div>
         
         <div class="chat-input-row">
             <button class="btn-mic" id="mic-btn" onclick="activarMicrofono()">🎤</button>
-            <input type="text" id="user-in" placeholder="Hable o escriba una orden..." onkeypress="if(event.key==='Enter') enviarMensaje()">
+            <input type="text" id="user-in" placeholder="Ordene, Señor..." onkeypress="if(event.key==='Enter') enviarMensaje()">
             <button onclick="enviarMensaje()">RUN</button>
         </div>
     </div>
 
     <script>
-        // Configuración del Reconocimiento de Voz nativo
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognition = null;
         
@@ -150,15 +148,11 @@
                 const textoEscuchado = event.results[0][0].transcript;
                 document.getElementById('user-in').value = textoEscuchado;
                 detenerMicrofono();
-                // Opcional: Envía el mensaje automáticamente tras hablar
                 enviarMensaje();
             };
 
             recognition.onerror = () => { detenerMicrofono(); };
             recognition.onend = () => { detenerMicrofono(); };
-        } else {
-            document.getElementById('mic-btn').style.display = 'none';
-            console.log("Tu navegador no soporta reconocimiento de voz.");
         }
 
         function activarMicrofono() {
@@ -179,60 +173,36 @@
             btn.innerText = "🎤";
         }
 
-        // Función para que la IA hable por los altavoces
+        // Sistema inteligente para buscar y calibrar la voz de Jarvis
         function hablar(texto) {
             if ('speechSynthesis' in window) {
-                // Limpiar etiquetas raras como [IA]: o códigos si los hay antes de hablar
-                let textoLimpio = texto.replace(/\[.*?\]/g, '').trim();
+                // Limpiar caracteres que no se deben leer
+                let textoLimpio = texto.replace(/\[.*?\]/g, '').replace(/[*_`#]/g, '').trim();
                 
                 const utterance = new SpeechSynthesisUtterance(textoLimpio);
+                
+                // Conseguir voces instaladas en el celular
+                const voices = window.speechSynthesis.getVoices();
+                
+                // Intentar buscar una voz en español que suene masculina o de Google básica
+                let vozJarvis = voices.find(v => v.lang.includes('es') && (v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('hombre') || v.name.toLowerCase().includes('natural')));
+                
+                // Si no encuentra una explícitamente de hombre, agarra la primera en español disponible
+                if (!vozJarvis) {
+                    vozJarvis = voices.find(v => v.lang.includes('es'));
+                }
+                
+                if (vozJarvis) utterance.voice = vozJarvis;
+                
                 utterance.lang = 'es-ES';
-                utterance.rate = 1.1; // Velocidad un poquito rápida para que suene pro
-                utterance.pitch = 0.9; // Tono ligeramente más grave/robótico
+                utterance.rate = 1.05; // Velocidad de habla refinada
+                utterance.pitch = 0.85; // Bajamos el tono para forzar una voz más grave/robótica
+                
                 window.speechSynthesis.speak(utterance);
             }
         }
 
-        async function enviarMensaje() {
-            const input = document.getElementById('user-in');
-            const txt = input.value.trim();
-            if(!txt) return;
-
-            // Frenar cualquier voz que esté hablando en ese momento
-            if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-
-            const box = document.getElementById('chat-box');
-            box.innerHTML += `<div class="msg user">> ${txt}</div>`;
-            input.value = "";
-            box.scrollTop = box.scrollHeight;
-
-            box.innerHTML += `<div class="msg ia" id="loading">[Sincronizando respuesta...]</div>`;
-            box.scrollTop = box.scrollHeight;
-
-            try {
-                const response = await fetch('/api/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: txt })
-                });
-                const data = await response.json();
-                
-                const loadingEl = document.getElementById('loading');
-                if (loadingEl) loadingEl.remove();
-                
-                let respuestaFinal = data.reply || 'Error en vector de respuesta.';
-                box.innerHTML += `<div class="msg ia">[JARVIS]: ${respuestaFinal}</div>`;
-                
-                // Activar la voz de Jarvis
-                hablar(respuestaFinal);
-
-            } catch (e) {
-                const loadingEl = document.getElementById('loading');
-                if (loadingEl) loadingEl.remove();
-                box.innerHTML += `<div class="msg ia">[SISTEMA]: Error crítico de enlace.</div>`;
-            }
-            box.scrollTop = box.scrollHeight;
-        }
-    </script>
-</body>
-</html>
+        // Forzar la carga de voces en navegadores móviles
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.getVoices();
+            window.speechSynthesis.onvoices
