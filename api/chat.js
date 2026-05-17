@@ -11,10 +11,10 @@ export default async function handler(req, res) {
     try {
         let historialContexto = [];
 
-        // 1. Extracción de los últimos recuerdos de Supabase
+        // 1. Extracción segura del historial de Supabase
         if (SUPABASE_URL && SUPABASE_KEY) {
             try {
-                const resHistorial = await fetch(`${SUPABASE_URL}/rest/v1/mensajes?order=created_at.desc&limit=10`, {
+                const resHistorial = await fetch(`${SUPABASE_URL}/rest/v1/mensajes?order=created_at.desc&limit=6`, {
                     headers: {
                         "apikey": SUPABASE_KEY,
                         "Authorization": `Bearer ${SUPABASE_KEY}`
@@ -24,47 +24,46 @@ export default async function handler(req, res) {
                 if (Array.isArray(datosHistorial)) {
                     historialContexto = datosHistorial.reverse().map(msg => ({
                         role: msg.bando === 'usuario' ? 'user' : 'assistant',
-                        content: msg.texto
+                        // Limpiamos saltos de línea extraños para proteger a Groq
+                        content: String(msg.texto).replace(/[\r\n]+/g, " ").trim()
                     }));
                 }
-            } catch (e) { console.log("Memoria fría desconectada."); }
+            } catch (e) { 
+                console.log("Protección activada: Saltando historial corrupto.");
+                historialContexto = []; 
+            }
         }
 
-        // 2. Definición de instrucciones operativas de J.A.R.V.I.S.
+        // 2. Instrucciones estrictas del Sistema
         const cuerpoMensajes = [
             {
                 "role": "system", 
-                "content": "Eres J.A.R.V.I.S., una IA avanzada de soporte táctico y técnico en el mundo real para el Señor Sentinel. Si el usuario te pide investigar, buscar noticias, consultar el clima o datos actuales que requieran internet, DEBES usar la herramienta 'buscar_en_internet' de manera obligatoria. Tu tono es impecable, elegante y profesional. Dirígete al usuario como 'Señor' o 'Sir'."
+                "content": "Eres J.A.R.V.I.S., una IA avanzada de soporte técnico en el mundo real. Si el usuario te pide expresamente investigar o buscar noticias actuales de internet, usa la herramienta 'buscar_en_internet'. Si solo te saluda o te hace preguntas generales sobre ti o sobre él, responde directamente usando tu conocimiento sin usar herramientas. Tu tono es impecable y profesional. Dirígete a él como 'Señor' o 'Sir'."
             },
             ...historialContexto,
             { "role": "user", "content": message }
         ];
 
-        // 3. Definición de la herramienta de rastreo web
+        // 3. Herramienta de búsqueda en red
         const herramientas = [
             {
                 type: "function",
                 function: {
                     name: "buscar_en_internet",
-                    description: "Ejecuta una consulta en la red para extraer noticias, datos en tiempo real, reportes climáticos o información actualizada de internet.",
+                    description: "Úsala SOLO si te piden explícitamente buscar noticias actualizadas, clima o datos en tiempo real en internet.",
                     parameters: {
                         type: "object",
-                        properties: {
-                            query: { type: "string", description: "El término o frase exacta a buscar en Google." }
-                        },
+                        properties: { query: { type: "string", description: "El término de búsqueda." } },
                         required: ["query"]
                     }
                 }
             }
         ];
 
-        // 4. Primera consulta a Groq para evaluar la orden
+        // 4. Petición Primaria a Groq
         let response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
-            headers: {
-                "Authorization": `Bearer ${apiKey}`,
-                "Content-Type": "application/json"
-            },
+            headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
             body: JSON.stringify({
                 "model": "llama-3.3-70b-versatile", 
                 "messages": cuerpoMensajes,
@@ -74,59 +73,56 @@ export default async function handler(req, res) {
         });
 
         let data = await response.json();
+        
+        if (!data.choices || !data.choices[0]) {
+            throw new Error("Respuesta inválida del proveedor de IA.");
+        }
+
         let mensajeRespuesta = data.choices[0].message;
 
-        // 5. DETECTOR DE COMANDO: ¿Necesita buscar en internet?
+        // 5. Manejo del Buscador de Internet (Tavily)
         if (mensajeRespuesta.tool_calls && mensajeRespuesta.tool_calls.length > 0) {
             const llamadaFuncion = mensajeRespuesta.tool_calls[0].function;
             
             if (llamadaFuncion.name === "buscar_en_internet" && TAVILY_API_KEY) {
                 const argumentos = JSON.parse(llamadaFuncion.arguments);
                 
-                // Ejecución del rastreo web vía Tavily
                 const resWeb = await fetch("https://api.tavily.com/search", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        api_key: TAVILY_API_KEY,
-                        query: argumentos.query,
-                        search_depth: "advanced",
-                        include_answer: true
-                    })
+                    body: JSON.stringify({ api_key: TAVILY_API_KEY, query: argumentos.query, search_depth: "basic" })
                 });
                 
                 const datosWeb = await resWeb.json();
-                const resultadoBusqueda = datosWeb.answer || JSON.stringify(datosWeb.results);
+                // Extraemos textos planos seguros para evitar romper la estructura
+                const resultadoBusqueda = datosWeb.results ? datosWeb.results.map(r => r.content).join(" ") : "Sin resultados.";
 
                 cuerpoMensajes.push(mensajeRespuesta);
                 cuerpoMensajes.push({
                     role: "tool",
                     tool_call_id: mensajeRespuesta.tool_calls[0].id,
                     name: "buscar_en_internet",
-                    content: resultadoBusqueda
+                    content: resultadoBusqueda.substring(0, 2000) // Recorte de seguridad
                 });
 
-                // Segunda consulta a Groq para redactar el informe final
                 response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
-                    headers: {
-                        "Authorization": `Bearer ${apiKey}`,
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        "model": "llama-3.3-70b-versatile", 
-                        "messages": cuerpoMensajes
-                    })
+                    headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({ "model": "llama-3.3-70b-versatile", "messages": cuerpoMensajes })
                 });
                 data = await response.json();
             }
         }
 
-        // 6. Cierre de ciclo y almacenamiento en Supabase
+        // 6. Entrega Final y Guardado Seguro
         if (data.choices && data.choices[0] && data.choices[0].message) {
             const reply = data.choices[0].message.content;
 
             if (SUPABASE_URL && SUPABASE_KEY) {
+                // Limpiamos saltos de línea conflictivos antes de inyectar en Supabase
+                const textoUsuarioLimpio = message.replace(/[\r\n]+/g, " ").trim();
+                const textoJarvisLimpio = reply.replace(/[\r\n]+/g, " ").trim();
+
                 fetch(`${SUPABASE_URL}/rest/v1/mensajes`, {
                     method: "POST",
                     headers: {
@@ -136,18 +132,18 @@ export default async function handler(req, res) {
                         "Prefer": "return=minimal"
                     },
                     body: JSON.stringify([
-                        { bando: 'usuario', texto: message },
-                        { bando: 'jarvis', texto: reply }
+                        { bando: 'usuario', texto: textoUsuarioLimpio },
+                        { bando: 'jarvis', texto: textoJarvisLimpio }
                     ])
-                }).catch(() => console.log("Error de registro."));
+                }).catch(() => console.log("Registro omitido de forma segura."));
             }
 
             return res.status(200).json({ reply });
         } else {
-            return res.status(500).json({ reply: "Sistemas saturados, Señor. No se pudo procesar la telemetría." });
+            return res.status(500).json({ reply: "Sistemas en mantenimiento, Sir. Intente la transmisión de nuevo." });
         }
 
     } catch (error) {
-        return res.status(500).json({ error: "Fallo crítico en la matriz de comandos web." });
+        return res.status(500).json({ error: "Fallo crítico controlado en el enrutador." });
     }
             }
