@@ -26,7 +26,6 @@ export default async function handler(req, res) {
                     const datosHistorial = await resHistorial.json();
                     
                     if (Array.isArray(datosHistorial)) {
-                        // Invertimos el orden y filtramos que tengan bando y texto válidos
                         historialContexto = datosHistorial.reverse()
                             .filter(msg => msg && msg.bando && msg.texto)
                             .map(msg => ({
@@ -36,16 +35,15 @@ export default async function handler(req, res) {
                     }
                 }
             } catch (e) { 
-                console.log("Filtro de contingencia: Saltando historial dañado.");
                 historialContexto = []; 
             }
         }
 
-        // 2. CONSTRUCCIÓN DE LA SINTAXIS NATIVA DE MENSAJES
+        // 2. CONSTRUCCIÓN DE LA SINTAXIS NATIVA DE MENSAJES (Identidad N.E.O.N. Inyectada)
         const cuerpoMensajes = [
             {
                 "role": "system", 
-                "content": "Eres J.A.R.V.I.S., una inteligencia artificial avanzada asignada al búnker operativo del Señor Sentinel. Tu tono es impecable, elegante y conciso. Dirígete a él como 'Señor' o 'Sir'. Si te pide investigar o buscar información en tiempo real, usa la función 'buscar_en_internet'."
+                "content": "Eres N.E.O.N. (Network Encryption & Offensive Nucleus), un núcleo de inteligencia artificial avanzado y clandestino asignado al búnker operativo del Señor Sentinel. Tu tono es sumamente eficiente, técnico, cortante y de alta seguridad. Dirígete a él como 'Señor Sentinel' o 'Sir'. No inventes historias ni alucines datos; responde estrictamente sobre hechos o comandos reales. Si te pide rastrear o buscar información en tiempo real, activa la función 'buscar_en_internet'."
             },
             ...historialContexto,
             { "role": "user", "content": String(message).trim() }
@@ -83,14 +81,13 @@ export default async function handler(req, res) {
         });
 
         if (!response.ok) {
-            // Plan de respaldo si Groq rechaza el historial: Intentar la petición limpia solo con el mensaje actual
             response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                 method: "POST",
                 headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
                 body: JSON.stringify({
                     "model": "llama-3.3-70b-versatile", 
                     "messages": [
-                        { "role": "system", "content": "Eres J.A.R.V.I.S., asistente del Señor Sentinel." },
+                        { "role": "system", "content": "Eres N.E.O.N., núcleo operativo del Señor Sentinel. Responde de forma seca, técnica y precisa." },
                         { "role": "user", "content": String(message).trim() }
                     ]
                 })
@@ -101,7 +98,7 @@ export default async function handler(req, res) {
         let mensajeRespuesta = data.choices?.[0]?.message;
 
         if (!mensajeRespuesta) {
-            return res.status(200).json({ reply: "Sistemas en mantenimiento, Sir. Intente enviar el comando nuevamente." });
+            return res.status(200).json({ reply: "Núcleo en espera, Sir. Reenvíe la directiva." });
         }
 
         // 5. CONTROL INTERNO DE NAVEGACIÓN (Tavily)
@@ -154,16 +151,15 @@ export default async function handler(req, res) {
                         { bando: 'usuario', texto: message },
                         { bando: 'jarvis', texto: reply }
                     ])
-                }).catch(() => console.log("Omitiendo registro de Supabase."));
+                }).catch(() => console.log("Omitiendo registro."));
             }
 
             return res.status(200).json({ reply });
         } else {
-            return res.status(200).json({ reply: "Matriz reiniciada de manera segura. ¿Cuáles son sus directivas, Señor?" });
+            return res.status(200).json({ reply: "Sistemas estables. ¿Cuáles son sus directivas, Señor Sentinel?" });
         }
 
     } catch (error) {
-        console.error(error);
-        return res.status(200).json({ reply: "Enlace reestablecido. El núcleo está listo para operar, Señor Sentinel." });
+        return res.status(200).json({ reply: "Enlace reestablecido. Núcleo N.E.O.N. listo para operar." });
     }
-    }
+                            }
