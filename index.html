@@ -2,117 +2,96 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>BÚNKER X9 // ASISTENTE J.A.R.V.I.S.</title>
-    <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no'>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROYECTO J.A.R.V.I.S.</title>
     <style>
-        :root {
-            --bg: #030206;
-            --panel: rgba(10, 7, 20, 0.95);
-            --border: #8be9fd;
-            --cyan: #8be9fd;
-            --magenta: #ff79c6;
-            --green: #50fa7b;
-            --text: #f8f8f2;
-        }
-        
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-
-        html, body {
-            background-color: var(--bg);
-            color: var(--text);
-            font-family: 'Courier New', monospace;
-            height: 100%;
-            width: 100%;
-            overflow: hidden;
-        }
-
-        .container {
-            width: 100%;
-            height: 100%;
+        body {
+            background-color: #050505;
+            color: #00ff66;
+            font-family: 'Courier New', Courier, monospace;
+            margin: 0;
+            padding: 20px;
             display: flex;
             flex-direction: column;
-            background: var(--panel);
+            height: 100vh;
+            box-sizing: border-box;
         }
-
-        .title {
-            font-size: 0.75em;
-            color: var(--cyan);
-            font-weight: bold;
-            padding: 12px;
-            text-transform: uppercase;
-            border-bottom: 2px solid rgba(139, 233, 253, 0.2);
-            background: rgba(139, 233, 253, 0.03);
+        #header {
             text-align: center;
+            border-bottom: 1px solid #003311;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            letter-spacing: 2px;
         }
-        
-        .terminal-box {
+        #terminal {
             flex: 1;
             overflow-y: auto;
-            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid #003311;
             padding: 15px;
-            font-size: 0.85em;
+            background-color: #000000;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        .linea {
+            margin-bottom: 12px;
+            white-space: pre-wrap;
+        }
+        #controles {
             display: flex;
-            flex-direction: column;
-            gap: 12px;
-            scroll-behavior: smooth;
+            gap: 10px;
+            padding-bottom: 10px;
         }
-
-        .msg { 
-            line-height: 1.5; 
-            word-break: break-word; 
-            white-space: pre-wrap; 
-        }
-        .msg.user { color: var(--magenta); font-weight: bold; }
-        .msg.ia { color: var(--green); }
-        
-        .chat-input-row {
-            display: flex;
-            gap: 6px;
-            padding: 12px;
-            background: #0a0714;
-            border-top: 2px solid rgba(139, 233, 253, 0.2);
-            width: 100%;
-            padding-bottom: env(safe-area-inset-bottom, 20px); 
-        }
-
-        input {
-            flex: 1;
-            background: rgba(0, 0, 0, 0.8);
-            border: 1px solid var(--border);
-            color: #fff;
-            padding: 12px;
-            border-radius: 4px;
-            font-family: inherit;
-            outline: none;
-            font-size: 0.95em;
-        }
-
-        button {
-            background: var(--cyan);
-            border: none;
-            color: #000;
-            padding: 0 14px;
-            border-radius: 4px;
-            font-family: inherit;
-            font-weight: bold;
+        #btn-micro {
+            background-color: #1a1a2e;
+            border: 1px solid #00ff66;
+            color: #00ff66;
+            padding: 15px;
+            border-radius: 5px;
+            font-size: 20px;
             cursor: pointer;
-            font-size: 0.9em;
-            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 55px;
         }
-
-        .btn-mic {
-            background: #282a36;
-            border: 1px solid var(--magenta);
-            color: var(--magenta);
-            font-size: 1.2em;
+        #btn-micro.grabando {
+            background-color: #ff0055;
+            color: #ffffff;
+            border-color: #ff0055;
+            animation: pulso 1.5s infinite;
         }
-        .btn-mic.recording {
-            background: var(--magenta);
-            color: #000;
-            animation: pulse 1s infinite;
+        #entrada {
+            flex: 1;
+            background-color: #000000;
+            border: 1px solid #003311;
+            color: #00ff66;
+            padding: 15px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 16px;
+            border-radius: 5px;
+            outline: none;
         }
-
-        @keyframes pulse {
+        #entrada:focus {
+            border-color: #00ff66;
+        }
+        #btn-enviar {
+            background-color: #00ff66;
+            color: #000000;
+            border: none;
+            padding: 0 25px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #btn-enviar:active {
+            background-color: #00cc52;
+        }
+        @keyframes pulso {
             0% { opacity: 1; }
             50% { opacity: 0.5; }
             100% { opacity: 1; }
@@ -121,88 +100,137 @@
 </head>
 <body>
 
-    <div class="container">
-        <div class="title">🤖 PROYECTO J.A.R.V.I.S. // CONTROL CENTRAL</div>
-        
-        <div class="terminal-box" id="chat-box">
-            <div class="msg ia">[JARVIS]: Todos los sistemas principales se encuentran operativos, Señor. ¿En qué puedo colaborar con sus proyectos hoy?</div>
-        </div>
-        
-        <div class="chat-input-row">
-            <button class="btn-mic" id="mic-btn" onclick="activarMicrofono()">🎤</button>
-            <input type="text" id="user-in" placeholder="Ordene, Señor..." onkeypress="if(event.key==='Enter') enviarMensaje()">
-            <button onclick="enviarMensaje()">RUN</button>
-        </div>
+    <div id="header">🤖 PROYECTO J.A.R.V.I.S. // CONTROL CENTRAL</div>
+    
+    <div id="terminal">
+        <div class="linea">[JARVIS]: Todos los sistemas principales se encuentran operativos, Señor. ¿En qué puedo colaborar con sus proyectos hoy?</div>
+    </div>
+
+    <div id="controles">
+        <button id="btn-micro" onclick="alternarMicrofono()">🎤</button>
+        <input type="text" id="entrada" placeholder="Escriba una orden o use el micrófono..." onkeypress="detectarEnter(event)">
+        <button id="btn-enviar" onclick="procesarOrden()">RUN</button>
     </div>
 
     <script>
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        let recognition = null;
-        
-        if (SpeechRecognition) {
-            recognition = new SpeechRecognition();
-            recognition.lang = 'es-ES';
-            recognition.interimResults = false;
+        const terminal = document.getElementById('terminal');
+        const entrada = document.getElementById('entrada');
+        const btnMicro = document.getElementById('btn-micro');
+        let reconocimiento;
+        let grabando = false;
 
-            recognition.onresult = (event) => {
-                const textoEscuchado = event.results[0][0].transcript;
-                document.getElementById('user-in').value = textoEscuchado;
-                detenerMicrofono();
-                enviarMensaje();
+        // Configuración del Reconocimiento de Voz nativo para Android
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            reconocimiento = new SpeechRecognition();
+            reconocimiento.lang = 'es-ES';
+            reconocimiento.continuous = false;
+            reconocimiento.interimResults = false;
+
+            reconocimiento.onstart = () => {
+                grabando = true;
+                btnMicro.classList.add('grabando');
+                entrada.placeholder = "Escuchando, Señor...";
             };
 
-            recognition.onerror = () => { detenerMicrofono(); };
-            recognition.onend = () => { detenerMicrofono(); };
+            reconocimiento.onend = () => {
+                grabando = false;
+                btnMicro.classList.remove('grabando');
+                entrada.placeholder = "Escriba una orden o use el micrófono...";
+            };
+
+            reconocimiento.onresult = (event) => {
+                const textoDetectado = event.results[0][0].transcript;
+                entrada.value = textoDetectado;
+                procesarOrden(); // Envía automáticamente al terminar de hablar
+            };
+
+            reconocimiento.onerror = (event) => {
+                console.error("Error del micro:", event.error);
+                grabando = false;
+                btnMicro.classList.remove('grabando');
+            };
+        } else {
+            btnMicro.style.display = 'none'; // Oculta si el navegador no lo soporta
         }
 
-        function activarMicrofono() {
-            if (!recognition) return;
-            const btn = document.getElementById('mic-btn');
-            if (btn.classList.contains('recording')) {
-                recognition.stop();
+        function alternarMicrofono() {
+            if (!reconocimiento) return;
+            if (grabando) {
+                reconocimiento.stop();
             } else {
-                btn.classList.add('recording');
-                btn.innerText = "🛑";
-                recognition.start();
+                reconocimiento.start();
             }
         }
 
-        function detenerMicrofono() {
-            const btn = document.getElementById('mic-btn');
-            btn.classList.remove('recording');
-            btn.innerText = "🎤";
+        function detectarEnter(event) {
+            if (event.key === 'Enter') {
+                procesarOrden();
+            }
         }
 
-        // Sistema inteligente para buscar y calibrar la voz de Jarvis
+        // Sistema de Voz Text-to-Speech integrado (Fase Celular)
         function hablar(texto) {
             if ('speechSynthesis' in window) {
-                // Limpiar caracteres que no se deben leer
-                let textoLimpio = texto.replace(/\[.*?\]/g, '').replace(/[*_`#]/g, '').trim();
+                // Limpiamos etiquetas de sistema si las hay
+                const textoLimpio = texto.replace(/\[JARVIS\]:/g, '').trim();
+                const mensajeVoz = new SpeechSynthesisUtterance(textoLimpio);
+                mensajeVoz.lang = 'es-ES';
                 
-                const utterance = new SpeechSynthesisUtterance(textoLimpio);
-                
-                // Conseguir voces instaladas en el celular
-                const voices = window.speechSynthesis.getVoices();
-                
-                // Intentar buscar una voz en español que suene masculina o de Google básica
-                let vozJarvis = voices.find(v => v.lang.includes('es') && (v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('hombre') || v.name.toLowerCase().includes('natural')));
-                
-                // Si no encuentra una explícitamente de hombre, agarra la primera en español disponible
-                if (!vozJarvis) {
-                    vozJarvis = voices.find(v => v.lang.includes('es'));
-                }
-                
-                if (vozJarvis) utterance.voice = vozJarvis;
-                
-                utterance.lang = 'es-ES';
-                utterance.rate = 1.05; // Velocidad de habla refinada
-                utterance.pitch = 0.85; // Bajamos el tono para forzar una voz más grave/robótica
-                
-                window.speechSynthesis.speak(utterance);
+                // Intenta forzar una voz masculina si está disponible en Android
+                const voces = window.speechSynthesis.getVoices();
+                const vozMasculina = voces.find(v => v.lang.includes('es') && (v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('google')));
+                if (vozMasculina) mensajeVoz.voice = vozMasculina;
+
+                window.speechSynthesis.speak(mensajeVoz);
             }
         }
 
-        // Forzar la carga de voces en navegadores móviles
+        async function procesarOrden() {
+            const texto = entrada.value.trim();
+            if (!texto) return;
+
+            // Imprimir lo que dijo el usuario en pantalla
+            imprimirPantalla("[USUARIO]: " + texto);
+            entrada.value = '';
+
+            try {
+                // PUENTE DE DATOS: Formateado exactamente para recibir la memoria en Vercel
+                const respuesta = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message: texto })
+                });
+
+                const datos = await respuesta.json();
+
+                if (datos.reply) {
+                    imprimirPantalla("[JARVIS]: " + datos.reply);
+                    hablar(datos.reply);
+                } else {
+                    imprimirPantalla("[SISTEMA]: Error en la respuesta del procesador central.");
+                }
+
+            } catch (error) {
+                console.error(error);
+                imprimirPantalla("[SISTEMA]: Interrupción de enlace. Verifique los servidores en Vercel.");
+            }
+        }
+
+        function imprimirPantalla(mensaje) {
+            const nuevaLinea = document.createElement('div');
+            nuevaLinea.className = 'linea';
+            nuevaLinea.textContent = mensaje;
+            terminal.appendChild(nuevaLinea);
+            terminal.scrollTop = terminal.scrollHeight; // Auto-scroll al fondo
+        }
+
+        // Asegura que las voces carguen correctamente en navegadores basados en Chromium/Android
         if ('speechSynthesis' in window) {
-            window.speechSynthesis.getVoices();
-            window.speechSynthesis.onvoices
+            window.speechSynthesis.onvoiceschanged = () => {};
+        }
+    </script>
+</body>
+</html>
