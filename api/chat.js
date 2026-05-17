@@ -1,46 +1,54 @@
 export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' });
 
-    const { message } = req.body;
+    const { message, image } = req.body; // AHORA RECIBIMOS TEXTO E IMAGEN (Base64)
     
-    const apiKey = process.env.OPENROUTER_API_KEY;
+    const apiKey = process.env.OPENROUTER_API_KEY; // O CLAVE DE GROQ DIRECTA SI LA TIENE
     const SUPABASE_URL = process.env.SUPABASE_URL;
     const SUPABASE_KEY = process.env.SUPABASE_KEY;
-    const TAVILY_API_KEY = process.env.TAVILY_API_KEY; // Enlace a la red
+    const TAVILY_API_KEY = process.env.TAVILY_API_KEY;
 
     try {
         let historialContexto = [];
 
-        // 1. Extracción de los últimos recuerdos de Supabase
+        // 1. Extracción de los últimos recuerdos de Supabase (Mismo protocolo)
         if (SUPABASE_URL && SUPABASE_KEY) {
             try {
                 const resHistorial = await fetch(`${SUPABASE_URL}/rest/v1/mensajes?order=created_at.desc&limit=10`, {
-                    headers: {
-                        "apikey": SUPABASE_KEY,
-                        "Authorization": `Bearer ${SUPABASE_KEY}`
-                    }
+                    headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }
                 });
                 const datosHistorial = await resHistorial.json();
                 if (Array.isArray(datosHistorial)) {
                     historialContexto = datosHistorial.reverse().map(msg => ({
                         role: msg.bando === 'usuario' ? 'user' : 'assistant',
-                        content: msg.texto
+                        content: [{ type: "text", text: msg.texto }] // FORMATO MULTIMODAL
                     }));
                 }
             } catch (e) { console.log("Memoria fría desconectada."); }
         }
 
-        // 2. Definición del sistema e instrucciones operativas de J.A.R.V.I.S.
+        // 2. Definición del sistema (Limpiada de ficción)
         const cuerpoMensajes = [
             {
                 "role": "system", 
-                "content": "Eres J.A.R.V.I.S., una IA avanzada de soporte táctico y técnico en el mundo real para el Señor Sentinel. Si el usuario te pide investigar, buscar noticias, consultar el clima, revisar datos actuales o cualquier instrucción que requiera datos en tiempo real de internet, DEBES usar la herramienta 'buscar_en_internet' de manera obligatoria. Tu tono es impecable, elegante y profesional. Dirígete al usuario como 'Señor' o 'Sir'."
+                "content": "Eres J.A.R.V.I.S., una IA avanzada de soporte táctico y técnico para el Señor Sentinel. Si el usuario te pide investigar datos en tiempo real, USAR la herramienta 'buscar_en_internet'. Si te envía una imagen, analízala con extrema precisión técnica para asistirlo. Tu tono es impecable y profesional. Dirígete a él como 'Señor' o 'Sir'."
             },
-            ...historialContexto,
-            { "role": "user", "content": message }
+            ...historialContexto
         ];
 
-        // 3. Definición de la herramienta que la IA puede ejecutar
+        // 3. Estructuración del mensaje de usuario actual (Multimodal)
+        const contenidoMensajeUsuario = [{ type: "text", text: message }];
+        if (image) {
+            // Inyectamos la imagen si el usuario la envió
+            contenidoMensajeUsuario.push({
+                type: "image_url",
+                image_url: { url: `data:image/jpeg;base64,${image}` }
+            });
+        }
+        
+        cuerpoMensajes.push({ "role": "user", "content": contenidoMensajeUsuario });
+
+        // 4. Definición de la herramienta de búsqueda (Mismo protocolo)
         const herramientas = [
             {
                 type: "function",
@@ -49,16 +57,14 @@ export default async function handler(req, res) {
                     description: "Ejecuta una consulta en la red para extraer noticias, datos en tiempo real, reportes climáticos o información actualizada de internet.",
                     parameters: {
                         type: "object",
-                        properties: {
-                            query: { type: "string", description: "El término o frase exacta a buscar en Google." }
-                        },
+                        properties: { query: { type: "string", description: "El término exacto a buscar." } },
                         required: ["query"]
                     }
                 }
             }
         ];
 
-        // 4. Primera consulta a Groq para evaluar la orden del Señor Sentinel
+        // 5. Primera consulta: ¡USAMOS EL MODELO DE VISIÓN!
         let response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
             headers: {
@@ -66,7 +72,7 @@ export default async function handler(req, res) {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                "model": "llama-3.3-70b-versatile", 
+                "model": "llama-3.2-11b-vision-preview", // MODELO DE VISIÓN ACTIVADO
                 "messages": cuerpoMensajes,
                 "tools": herramientas,
                 "tool_choice": "auto"
@@ -74,81 +80,54 @@ export default async function handler(req, res) {
         });
 
         let data = await response.json();
+        if (data.error) throw new Error(JSON.stringify(data.error));
+        
         let mensajeRespuesta = data.choices[0].message;
 
-        // 5. DETECTOR DE COMANDO: ¿La IA decidió que necesita buscar en internet?
+        // 6. Detector de Comando (Mismo protocolo)
         if (mensajeRespuesta.tool_calls && mensajeRespuesta.tool_calls.length > 0) {
             const llamadaFuncion = mensajeRespuesta.tool_calls[0].function;
-            
             if (llamadaFuncion.name === "buscar_en_internet" && TAVILY_API_KEY) {
                 const argumentos = JSON.parse(llamadaFuncion.arguments);
-                
-                // Ejecución del comando de rastreo web (Incursión en Tavily)
                 const resWeb = await fetch("https://api.tavily.com/search", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        api_key: TAVILY_API_KEY,
-                        query: argumentos.query,
-                        search_depth: "advanced",
-                        include_answer: true
+                        api_key: TAVILY_API_KEY, query: argumentos.query, search_depth: "advanced", include_answer: true
                     })
                 });
-                
                 const datosWeb = await resWeb.json();
                 const resultadoBusqueda = datosWeb.answer || JSON.stringify(datosWeb.results);
 
-                // Inyectamos el resultado de la búsqueda en el hilo para que J.A.R.V.I.S. lo procese
                 cuerpoMensajes.push(mensajeRespuesta);
                 cuerpoMensajes.push({
-                    role: "tool",
-                    tool_call_id: mensajeRespuesta.tool_calls[0].id,
-                    name: "buscar_en_internet",
-                    content: resultadoBusqueda
+                    role: "tool", tool_call_id: mensajeRespuesta.tool_calls[0].id, name: "buscar_en_internet", content: resultadoBusqueda
                 });
 
-                // Segunda consulta a Groq: La IA redacta el reporte final con los datos de internet
                 response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
-                    headers: {
-                        "Authorization": `Bearer ${apiKey}`,
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        "model": "llama-3.3-70b-versatile", 
-                        "messages": cuerpoMensajes
-                    })
+                    headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({ "model": "llama-3.2-11b-vision-preview", "messages": cuerpoMensajes }) // MISMO MODELO
                 });
                 data = await response.json();
             }
         }
 
-        // 6. Cierre de ciclo y almacenamiento en la memoria cuántica (Supabase)
+        // 7. Cierre de ciclo y almacenamiento (Mismo protocolo)
         if (data.choices && data.choices[0] && data.choices[0].message) {
             const reply = data.choices[0].message.content;
-
             if (SUPABASE_URL && SUPABASE_KEY) {
                 fetch(`${SUPABASE_URL}/rest/v1/mensajes`, {
                     method: "POST",
-                    headers: {
-                        "apikey": SUPABASE_KEY,
-                        "Authorization": `Bearer ${SUPABASE_KEY}`,
-                        "Content-Type": "application/json",
-                        "Prefer": "return=minimal"
-                    },
-                    body: JSON.stringify([
-                        { bando: 'usuario', texto: message },
-                        { bando: 'jarvis', texto: reply }
-                    ])
+                    headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json", "Prefer": "return=minimal" },
+                    body: JSON.stringify([{ bando: 'usuario', texto: message }, { bando: 'jarvis', texto: reply }])
                 }).catch(() => console.log("Error de registro."));
             }
-
             return res.status(200).json({ reply });
         } else {
-            return res.status(500).json({ reply: "Sistemas saturados, Señor. No se pudo procesar la telemetría web." });
+            return res.status(500).json({ reply: "Sistemas de visión colapsados, Señor Sentinel." });
         }
-
     } catch (error) {
-        return res.status(500).json({ error: "Fallo crítico en la matriz de comandos web." });
+        return res.status(500).json({ error: "Fallo crítico en la matriz de visión del búnker." });
     }
-                    }
+            }
