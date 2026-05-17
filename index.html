@@ -103,44 +103,6 @@
             text-align: right;
         }
 
-        .miniatura-imagen {
-            max-width: 150px;
-            max-height: 150px;
-            border-radius: 8px;
-            border: 1px solid var(--neon-blue);
-            margin-top: 5px;
-            display: block;
-        }
-
-        #vista-previa-contenedor {
-            display: none;
-            padding: 5px;
-            background: rgba(0,0,0,0.5);
-            border: 1px dashed var(--neon-blue);
-            border-radius: 8px;
-            margin-bottom: 8px;
-            position: relative;
-        }
-
-        #img-preview {
-            max-height: 80px;
-            border-radius: 6px;
-        }
-
-        #btn-quitar-img {
-            position: absolute;
-            top: 2px;
-            right: 2px;
-            background: #ff0055;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-
         #panel-control {
             display: flex;
             gap: 8px;
@@ -169,7 +131,6 @@
             background: rgba(255, 0, 85, 0.2);
             border-color: #ff0055;
             color: #ff0055;
-            animation: pulso-holograma 1.2s infinite;
         }
 
         #entrada {
@@ -202,24 +163,15 @@
 </head>
 <body>
 
-    <div id="header">⚡ SISTEMA CENTRAL // ENLACE MULTIMODAL ACTIVO</div>
+    <div id="header">⚡ ARCHIVADO DE PROTOCOLO // INTEGRIDAD: 100%</div>
     
     <div id="pantalla-chat">
-        <div class="burbuja jarvis-msg">Sistemas estables, Señor Sentinel. Sensores visuales integrados a la matriz de datos de Vercel. Dispuesto para sus órdenes.</div>
-    </div>
-
-    <div id="vista-previa-contenedor">
-        <button id="btn-quitar-img" onclick="quitarImagen()">X</button>
-        <img id="img-preview" src="" alt="Vista previa">
+        <div class="burbuja jarvis-msg">Sistemas principales vinculados a la red de manera exitosa, Señor Sentinel. Monitoreando base de datos activa.</div>
     </div>
 
     <div id="panel-control">
         <button id="btn-micro" class="btn-accion" onclick="alternarMicrofono()">🎙️</button>
-        
-        <button id="btn-camara" class="btn-accion" onclick="document.getElementById('input-archivo').click()">📷</button>
-        <input type="file" id="input-archivo" accept="image/*" style="display: none;" onchange="procesarImagen(this)">
-
-        <input type="text" id="entrada" placeholder="Transmitir comando o adjuntar imagen..." onkeypress="detectarEnter(event)">
+        <input type="text" id="entrada" placeholder="Transmitir comando..." onkeypress="detectarEnter(event)">
         <button id="btn-ejecutar" onclick="procesarOrden()">ENVIAR</button>
     </div>
 
@@ -227,14 +179,10 @@
         const pantallaChat = document.getElementById('pantalla-chat');
         const entrada = document.getElementById('entrada');
         const btnMicro = document.getElementById('btn-micro');
-        const vistaPrevia = document.getElementById('vista-previa-contenedor');
-        const imgPreview = document.getElementById('img-preview');
         
         let reconocimiento;
         let grabando = false;
-        let imagenBase64 = null; // Almacén de la foto
 
-        // Configuración de Voz
         if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             reconocimiento = new SpeechRecognition();
@@ -247,28 +195,6 @@
         function alternarMicrofono() { if (reconocimiento) grabando ? reconocimiento.stop() : reconocimiento.start(); }
         function detectarEnter(e) { if (e.key === 'Enter') procesarOrden(); }
 
-        // Procesador de imágenes de la cámara de su celular
-        function procesarImagen(input) {
-            const archivo = input.files[0];
-            if (!archivo) return;
-
-            const lector = new FileReader();
-            lector.onload = function(e) {
-                // Extrae solo el string codificado Base64 limpio
-                imagenBase64 = e.target.result.split(',')[1];
-                imgPreview.src = e.target.result;
-                vistaPrevia.style.display = 'block';
-            };
-            lector.readAsDataURL(archivo);
-        }
-
-        function quitarImagen() {
-            imagenBase64 = null;
-            imgPreview.src = "";
-            vistaPrevia.style.display = 'none';
-            document.getElementById('input-archivo').value = "";
-        }
-
         function hablar(t) {
             if ('speechSynthesis' in window) {
                 const m = new SpeechSynthesisUtterance(t);
@@ -279,21 +205,16 @@
 
         async function procesarOrden() {
             const texto = entrada.value.trim();
-            if (!texto && !imagenBase64) return;
+            if (!texto) return;
 
-            // Pintar mensaje del usuario en pantalla
-            imprimirPantalla(texto, 'usuario-msg', imagenBase64);
-            
-            const copiaImagen = imagenBase64; // Guardar copia para el fetch
+            imprimirPantalla(texto, 'usuario-msg');
             entrada.value = '';
-            quitarImagen();
 
             try {
-                // Envío coordinado a Vercel
                 const respuesta = await fetch('/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: texto || "Analiza la siguiente imagen, Sir.", image: copiaImagen })
+                    body: JSON.stringify({ message: texto })
                 });
 
                 const datos = await respuesta.json();
@@ -302,30 +223,17 @@
                     imprimirPantalla(datos.reply, 'jarvis-msg');
                     hablar(datos.reply);
                 } else {
-                    imprimirPantalla("Advertencia: Conexión inestable con el procesador central.", 'jarvis-msg');
+                    imprimirPantalla("Error de respuesta en la matriz central.", 'jarvis-msg');
                 }
             } catch (error) {
-                imprimirPantalla("Error de enlace. Matriz fuera de línea.", 'jarvis-msg');
+                imprimirPantalla("Error de enlace. Servidor fuera de línea.", 'jarvis-msg');
             }
         }
 
-        function imprimirPantalla(mensaje, clase, dataImg = null) {
+        function imprimirPantalla(mensaje, clase) {
             const burbuja = document.createElement('div');
             burbuja.className = `burbuja ${clase}`;
-            
-            if (mensaje) {
-                const textoNodo = document.createElement('div');
-                textoNodo.textContent = mensaje;
-                burbuja.appendChild(textoNodo);
-            }
-
-            if (dataImg) {
-                const img = document.createElement('img');
-                img.src = `data:image/jpeg;base64,${dataImg}`;
-                img.className = 'miniatura-imagen';
-                burbuja.appendChild(img);
-            }
-
+            burbuja.textContent = mensaje;
             pantallaChat.appendChild(burbuja);
             pantallaChat.scrollTop = pantallaChat.scrollHeight;
         }
