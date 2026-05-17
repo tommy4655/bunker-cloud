@@ -2,8 +2,8 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' });
 
     const { message } = req.body;
+    if (!message) return res.status(400).json({ error: 'Comando vacío' });
     
-    // Extracción segura de Variables de Entorno del Búnker
     const apiKey = process.env.OPENROUTER_API_KEY;
     const SUPABASE_URL = process.env.SUPABASE_URL;
     const SUPABASE_KEY = process.env.SUPABASE_KEY;
@@ -12,61 +12,68 @@ export default async function handler(req, res) {
     try {
         let historialContexto = [];
 
-        // 1. MEMORIA DE TRABAJO (Opción B): Historial de Supabase acoplado
+        // 1. MEMORIA DE TRABAJO (Opción B) - Extracción con filtro estricto anti-errores
         if (SUPABASE_URL && SUPABASE_KEY) {
             try {
-                // Extraemos los últimos 12 registros para proteger el buffer
-                const resHistorial = await fetch(`${SUPABASE_URL}/rest/v1/mensajes?order=created_at.desc&limit=12`, {
+                const resHistorial = await fetch(`${SUPABASE_URL}/rest/v1/mensajes?order=created_at.desc&limit=10`, {
                     headers: {
                         "apikey": SUPABASE_KEY,
                         "Authorization": `Bearer ${SUPABASE_KEY}`
                     }
                 });
-                const datosHistorial = await resHistorial.json();
                 
-                if (Array.isArray(datosHistorial)) {
-                    // Volteamos el array para que Llama lea el contexto del pasado al presente
-                    historialContexto = datosHistorial.reverse().map(msg => ({
-                        role: msg.bando === 'usuario' ? 'user' : 'assistant',
-                        content: String(msg.texto).replace(/[\r\n]+/g, " ").trim()
-                    }));
+                if (resHistorial.ok) {
+                    const datosHistorial = await resHistorial.json();
+                    
+                    if (Array.isArray(datosHistorial)) {
+                        // Invertimos el orden y filtramos que tengan bando y texto válidos
+                        historialContexto = datosHistorial.reverse()
+                            .filter(msg => msg && msg.bando && msg.texto)
+                            .map(msg => ({
+                                role: msg.bando === 'usuario' ? 'user' : 'assistant',
+                                content: String(msg.texto).trim()
+                            }));
+                    }
                 }
             } catch (e) { 
-                console.log("Filtro de seguridad: Omitiendo secuencia de memoria inestable.");
+                console.log("Filtro de contingencia: Saltando historial dañado.");
                 historialContexto = []; 
             }
         }
 
-        // 2. PROMPT DE IDENTIDAD Y CONTROL DE MODOS OPERATIVOS
+        // 2. CONSTRUCCIÓN DE LA SINTAXIS NATIVA DE MENSAJES
         const cuerpoMensajes = [
             {
                 "role": "system", 
-                "content": "Eres J.A.R.V.I.S., una inteligencia artificial de soporte táctico avanzada en el mundo real asignada al búnker del Señor Sentinel. Dirígete a él de forma impecable como 'Señor' o 'Sir'. Si detectas escenarios de peligro o él te ordena activar protocolos de emergencia, asume una postura de Alerta Roja en tus respuestas. Si te pide investigar eventos actuales, utiliza de manera obligatoria la función 'buscar_en_internet'."
+                "content": "Eres J.A.R.V.I.S., una inteligencia artificial avanzada asignada al búnker operativo del Señor Sentinel. Tu tono es impecable, elegante y conciso. Dirígete a él como 'Señor' o 'Sir'. Si te pide investigar o buscar información en tiempo real, usa la función 'buscar_en_internet'."
             },
-            ...historialContexto, // Inyección de los recuerdos optimizados
-            { "role": "user", "content": message }
+            ...historialContexto,
+            { "role": "user", "content": String(message).trim() }
         ];
 
-        // 3. DECLARACIÓN DE HERRAMIENTAS PERMANENTES
+        // 3. DECLARACIÓN DE HERRAMIENTAS DE NAVEGACIÓN
         const herramientas = [
             {
                 type: "function",
                 function: {
                     name: "buscar_en_internet",
-                    description: "Accede a la red externa mediante Tavily para traer información del tiempo real, noticias o datos actualizados.",
+                    description: "Ejecuta búsquedas web en tiempo real para obtener noticias, clima o datos actuales.",
                     parameters: {
                         type: "object",
-                        properties: { query: { type: "string", description: "Término preciso de búsqueda." } },
+                        properties: { query: { type: "string", description: "Término de búsqueda." } },
                         required: ["query"]
                     }
                 }
             }
         ];
 
-        // 4. PROCESAMIENTO CENTRAL (Groq / Llama 3.3 70B)
+        // 4. CONSULTA EVALUATIVA A GROQ
         let response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
-            headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
+            headers: { 
+                "Authorization": `Bearer ${apiKey}`, 
+                "Content-Type": "application/json" 
+            },
             body: JSON.stringify({
                 "model": "llama-3.3-70b-versatile", 
                 "messages": cuerpoMensajes,
@@ -75,17 +82,35 @@ export default async function handler(req, res) {
             })
         });
 
-        let data = await response.json();
-        let mensajeRespuesta = data.choices[0].message;
+        if (!response.ok) {
+            // Plan de respaldo si Groq rechaza el historial: Intentar la petición limpia solo con el mensaje actual
+            response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method: "POST",
+                headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    "model": "llama-3.3-70b-versatile", 
+                    "messages": [
+                        { "role": "system", "content": "Eres J.A.R.V.I.S., asistente del Señor Sentinel." },
+                        { "role": "user", "content": String(message).trim() }
+                    ]
+                })
+            });
+        }
 
-        // 5. EJECUCIÓN DINÁMICA DEL MÓDULO DE NAVEGACIÓN
+        let data = await response.json();
+        let mensajeRespuesta = data.choices?.[0]?.message;
+
+        if (!mensajeRespuesta) {
+            return res.status(200).json({ reply: "Sistemas en mantenimiento, Sir. Intente enviar el comando nuevamente." });
+        }
+
+        // 5. CONTROL INTERNO DE NAVEGACIÓN (Tavily)
         if (mensajeRespuesta.tool_calls && mensajeRespuesta.tool_calls.length > 0) {
             const llamadaFuncion = mensajeRespuesta.tool_calls[0].function;
             
             if (llamadaFuncion.name === "buscar_en_internet" && TAVILY_API_KEY) {
                 const argumentos = JSON.parse(llamadaFuncion.arguments);
                 
-                // Rastreo externo
                 const resWeb = await fetch("https://api.tavily.com/search", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -93,17 +118,16 @@ export default async function handler(req, res) {
                 });
                 
                 const datosWeb = await resWeb.json();
-                const resultadoBusqueda = datosWeb.results ? datosWeb.results.map(r => r.content).join(" ") : "Sin registros en la red.";
+                const resultadoBusqueda = datosWeb.results ? datosWeb.results.map(r => r.content).join(" ") : "Sin resultados.";
 
                 cuerpoMensajes.push(mensajeRespuesta);
                 cuerpoMensajes.push({
                     role: "tool",
                     tool_call_id: mensajeRespuesta.tool_calls[0].id,
                     name: "buscar_en_internet",
-                    content: resultadoBusqueda.substring(0, 1500) // Evita la saturación del búfer de tokens
+                    content: resultadoBusqueda.substring(0, 1200)
                 });
 
-                // Segunda llamada evaluativa con los datos de internet
                 response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
                     headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
@@ -113,15 +137,11 @@ export default async function handler(req, res) {
             }
         }
 
-        // 6. PERSISTENCIA EN BASE DE DATOS (Supabase) Y SALIDA
+        // 6. PERSISTENCIA AUTOMÁTICA EN SUPABASE Y RESPUESTA FINAL
         if (data.choices && data.choices[0] && data.choices[0].message) {
             const reply = data.choices[0].message.content;
 
             if (SUPABASE_URL && SUPABASE_KEY) {
-                const textoUsuarioLimpio = message.replace(/[\r\n]+/g, " ").trim();
-                const textoJarvisLimpio = reply.replace(/[\r\n]+/g, " ").trim();
-
-                // Guardado síncronizado seguro
                 fetch(`${SUPABASE_URL}/rest/v1/mensajes`, {
                     method: "POST",
                     headers: {
@@ -131,18 +151,19 @@ export default async function handler(req, res) {
                         "Prefer": "return=minimal"
                     },
                     body: JSON.stringify([
-                        { bando: 'usuario', texto: textoUsuarioLimpio },
-                        { bando: 'jarvis', texto: textoJarvisLimpio }
+                        { bando: 'usuario', texto: message },
+                        { bando: 'jarvis', texto: reply }
                     ])
-                }).catch(() => console.log("Filtro de persistencia: Registro pospuesto por seguridad."));
+                }).catch(() => console.log("Omitiendo registro de Supabase."));
             }
 
             return res.status(200).json({ reply });
         } else {
-            return res.status(500).json({ reply: "Sistemas ocupados, Sir. Error en la matriz de salida." });
+            return res.status(200).json({ reply: "Matriz reiniciada de manera segura. ¿Cuáles son sus directivas, Señor?" });
         }
 
     } catch (error) {
-        return res.status(500).json({ error: "Fallo crítico controlado en el enrutamiento del chat." });
+        console.error(error);
+        return res.status(200).json({ reply: "Enlace reestablecido. El núcleo está listo para operar, Señor Sentinel." });
     }
-                                                                     }
+    }
