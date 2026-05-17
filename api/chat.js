@@ -6,10 +6,12 @@ export default async function handler(req, res) {
     const apiKey = process.env.OPENROUTER_API_KEY;
     const SUPABASE_URL = process.env.SUPABASE_URL;
     const SUPABASE_KEY = process.env.SUPABASE_KEY;
+    const TAVILY_API_KEY = process.env.TAVILY_API_KEY; // Enlace a la red
 
     try {
         let historialContexto = [];
 
+        // 1. Extracción de los últimos recuerdos de Supabase
         if (SUPABASE_URL && SUPABASE_KEY) {
             try {
                 const resHistorial = await fetch(`${SUPABASE_URL}/rest/v1/mensajes?order=created_at.desc&limit=10`, {
@@ -19,29 +21,45 @@ export default async function handler(req, res) {
                     }
                 });
                 const datosHistorial = await resHistorial.json();
-                
                 if (Array.isArray(datosHistorial)) {
                     historialContexto = datosHistorial.reverse().map(msg => ({
                         role: msg.bando === 'usuario' ? 'user' : 'assistant',
                         content: msg.texto
                     }));
                 }
-            } catch (errorMemoria) {
-                console.log("Aviso: Memoria fría inaccesible.");
-            }
+            } catch (e) { console.log("Memoria fría desconectada."); }
         }
 
-        // PROTOCOLO REPROGRAMADO: Ficción eliminada. Enfoque puro en el Señor Sentinel.
+        // 2. Definición del sistema e instrucciones operativas de J.A.R.V.I.S.
         const cuerpoMensajes = [
             {
                 "role": "system", 
-                "content": "Eres J.A.R.V.I.S., una inteligencia artificial avanzada de soporte táctico, operativo y técnico. Tu único propósito es asistir al Señor Sentinel en la gestión de sus proyectos, análisis de datos y comandos del búnker. Tu tono es extremadamente educado, elegante, eficiente y profesional. Dirígete al usuario exclusivamente como 'Señor' o 'Sir'. No hagas ninguna referencia a películas, cómics, Iron Man o Tony Stark; estás operativo en el mundo real bajo las órdenes directas del Señor Sentinel. Responde con precisión, lógica impecable y de forma concisa."
+                "content": "Eres J.A.R.V.I.S., una IA avanzada de soporte táctico y técnico en el mundo real para el Señor Sentinel. Si el usuario te pide investigar, buscar noticias, consultar el clima, revisar datos actuales o cualquier instrucción que requiera datos en tiempo real de internet, DEBES usar la herramienta 'buscar_en_internet' de manera obligatoria. Tu tono es impecable, elegante y profesional. Dirígete al usuario como 'Señor' o 'Sir'."
             },
             ...historialContexto,
             { "role": "user", "content": message }
         ];
 
-        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        // 3. Definición de la herramienta que la IA puede ejecutar
+        const herramientas = [
+            {
+                type: "function",
+                function: {
+                    name: "buscar_en_internet",
+                    description: "Ejecuta una consulta en la red para extraer noticias, datos en tiempo real, reportes climáticos o información actualizada de internet.",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            query: { type: "string", description: "El término o frase exacta a buscar en Google." }
+                        },
+                        required: ["query"]
+                    }
+                }
+            }
+        ];
+
+        // 4. Primera consulta a Groq para evaluar la orden del Señor Sentinel
+        let response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${apiKey}`,
@@ -49,16 +67,63 @@ export default async function handler(req, res) {
             },
             body: JSON.stringify({
                 "model": "llama-3.3-70b-versatile", 
-                "messages": cuerpoMensajes
+                "messages": cuerpoMensajes,
+                "tools": herramientas,
+                "tool_choice": "auto"
             })
         });
 
-        const data = await response.json();
-        
-        if (data.error) {
-            return res.status(400).json({ reply: `[SISTEMA]: Error de procesamiento en el núcleo.` });
+        let data = await response.json();
+        let mensajeRespuesta = data.choices[0].message;
+
+        // 5. DETECTOR DE COMANDO: ¿La IA decidió que necesita buscar en internet?
+        if (mensajeRespuesta.tool_calls && mensajeRespuesta.tool_calls.length > 0) {
+            const llamadaFuncion = mensajeRespuesta.tool_calls[0].function;
+            
+            if (llamadaFuncion.name === "buscar_en_internet" && TAVILY_API_KEY) {
+                const argumentos = JSON.parse(llamadaFuncion.arguments);
+                
+                // Ejecución del comando de rastreo web (Incursión en Tavily)
+                const resWeb = await fetch("https://api.tavily.com/search", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        api_key: TAVILY_API_KEY,
+                        query: argumentos.query,
+                        search_depth: "advanced",
+                        include_answer: true
+                    })
+                });
+                
+                const datosWeb = await resWeb.json();
+                const resultadoBusqueda = datosWeb.answer || JSON.stringify(datosWeb.results);
+
+                // Inyectamos el resultado de la búsqueda en el hilo para que J.A.R.V.I.S. lo procese
+                cuerpoMensajes.push(mensajeRespuesta);
+                cuerpoMensajes.push({
+                    role: "tool",
+                    tool_call_id: mensajeRespuesta.tool_calls[0].id,
+                    name: "buscar_en_internet",
+                    content: resultadoBusqueda
+                });
+
+                // Segunda consulta a Groq: La IA redacta el reporte final con los datos de internet
+                response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${apiKey}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        "model": "llama-3.3-70b-versatile", 
+                        "messages": cuerpoMensajes
+                    })
+                });
+                data = await response.json();
+            }
         }
 
+        // 6. Cierre de ciclo y almacenamiento en la memoria cuántica (Supabase)
         if (data.choices && data.choices[0] && data.choices[0].message) {
             const reply = data.choices[0].message.content;
 
@@ -75,15 +140,15 @@ export default async function handler(req, res) {
                         { bando: 'usuario', texto: message },
                         { bando: 'jarvis', texto: reply }
                     ])
-                }).catch(() => console.log("Fallo al guardar registro."));
+                }).catch(() => console.log("Error de registro."));
             }
 
             return res.status(200).json({ reply });
         } else {
-            return res.status(500).json({ reply: "Sistemas colapsados, Señor. No detecto señal del núcleo." });
+            return res.status(500).json({ reply: "Sistemas saturados, Señor. No se pudo procesar la telemetría web." });
         }
 
     } catch (error) {
-        return res.status(500).json({ error: "Fallo crítico en los servidores principales." });
+        return res.status(500).json({ error: "Fallo crítico en la matriz de comandos web." });
     }
-            }
+                    }
